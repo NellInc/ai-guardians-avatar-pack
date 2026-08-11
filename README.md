@@ -1,0 +1,114 @@
+# AI Guardians Avatar Pack
+
+This repository is the immutable public runtime-media backing store for AI Guardians motion portraits and speech-mouth overlays.
+
+## Version v1
+
+* Source candidate: `d9de35247fe41d74eebd75b7a5523f158b0788ba`
+* Runtime media: 9,089 files, 271,610,332 bytes
+* Media types: 8,415 WebP, 521 WebM, 153 PNG
+* Source inventory SHA-256: `f2f1a5da3d58a7ede59219b0f7584c60b1f0d92a42e4032cdc88f44bff22693b`
+* Source inventory contract SHA-256: `60fd5fa72e6d41c17f6760baf42afbed1c2dad7331b62605ee7e8671211e4b70`
+* Runtime contract SHA-256: `1fc3399ca9a79a5fb9033ae9119269d6fe3e98fecaa11f5f27678b381c393b0b`
+* Manifest SHA-256: `77fbe4e2fbffd6cc9447cca2743be13ab5e0d6f40e139b408c33a347b02e2822`
+
+Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
+
+Version v1 becomes immutable when published. A future changed byte requires a
+coordinated new manifest/runtime contract and a new version directory. These
+v1 tools deliberately reject other version names so the CDN producer cannot
+outrun the shipped runtime consumer.
+
+## Scope
+
+The pack contains only production runtime media: living-portrait WebM files, A.L.L.Y. directional portrait-transition WebM files, mouth and blink WebP assets, A.L.L.Y. mouth PNG assets, and A.L.L.Y. oral or hand-contact WebM layers. Source manifests and metadata remain bundled with the game. Comparison renders, contact sheets, lab-only media, and proof-of-concept media are excluded. The builder and verifier preserve an exact seven-path denylist for the source-resident Yuki review/transition/comparison assets and legacy A.L.L.Y. speech experiments that must never enter this pack.
+
+## Integrity
+
+`v1/manifest.json` lists every file's public path, game runtime path, byte size, SHA-256 digest, family, and media role. Its contract digest is SHA-256 over path-sorted UTF-8 rows encoded as `path\0size\0sha256\0media_role\n`, as documented in the manifest.
+
+A sealed build also writes `v1/receipt.json`. The receipt exposes the raw
+manifest SHA-256, the canonical contract SHA-256, the exact source candidate,
+and the exact external-closure inventory identity. The receipt is metadata and
+is not a runtime payload member.
+
+## Deterministic build
+
+The builder accepts only an explicit external-only P2 closure inventory. It
+does not discover or copy a broad directory tree. The inventory has this exact
+shape:
+
+```json
+{
+  "schema": 1,
+  "status": "p2_product_freeze",
+  "candidate_sha": "<40 lowercase hex characters>",
+  "files": [
+    {
+      "runtime_path": "images/chars/...",
+      "size": 123,
+      "sha256": "<64 lowercase hex characters>",
+      "family": "cast_living",
+      "media_role": "living_portrait"
+    }
+  ]
+}
+```
+
+Rows must be in ascending UTF-8 runtime-path order. They contain external
+payload members only. Static fallback files remain in the game and must not
+enter this inventory.
+
+Build a staged pack, independently verify it, and transactionally replace
+`v1/`. Handled failures restore the previous version; an interrupted
+transaction leaves a detectable backup and fails sealed verification:
+
+```bash
+python3 tools/build_pack.py \
+  --source-root /absolute/path/to/Contents/Resources/autorun/game \
+  --inventory /absolute/path/to/p2_external_closure.json \
+  --candidate-sha <exact-p2-commit>
+```
+
+Prove that a second build is byte-identical without modifying the pack:
+
+```bash
+python3 tools/build_pack.py \
+  --source-root /absolute/path/to/Contents/Resources/autorun/game \
+  --inventory /absolute/path/to/p2_external_closure.json \
+  --candidate-sha <exact-p2-commit> \
+  --check
+```
+
+Run the independent verifier directly:
+
+```bash
+python3 tools/verify_pack.py \
+  --pack-root . \
+  --inventory /absolute/path/to/p2_external_closure.json
+```
+
+The verifier rejects missing or extra files, symlinks, Git LFS pointers, files
+above the 50 MB pre-push ceiling, invalid media magic, path or case collisions,
+review media, static fallbacks, aggregate drift, any byte or digest mismatch,
+and an incomplete A.L.L.Y. transition, oral-motion, or foreground closure.
+
+## Pages transport contract
+
+`.nojekyll` keeps underscore-prefixed runtime paths directly addressable. Media
+files remain uncompressed, ordinary repository files so HTTP byte ranges can be
+served. The runtime requires the deployed origin to provide:
+
+* `Access-Control-Allow-Origin: *` for every manifest and payload request.
+* `Content-Type: video/webm`, `image/webp`, or `image/png` according to the
+  manifest's extension contract.
+* `206 Partial Content` and an exact `Content-Range` for WebM Range requests.
+* Compatibility with a COEP `require-corp` game page through CORS.
+
+These are hosted-response properties. They must be checked against the exact
+deployed candidate after publication. A local build or Git object cannot prove
+them.
+
+## Rights
+
+Copyright © 2026 Nell Watson. All rights reserved. These proprietary assets are published solely for AI Guardians runtime delivery. Publication does not grant reuse, redistribution, modification, or relicensing rights.
