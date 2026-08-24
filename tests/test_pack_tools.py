@@ -168,6 +168,13 @@ def fixture_closure(tmp_path: Path) -> tuple[Path, Path, list[dict[str, object]]
     add_row(
         source_root,
         rows,
+        "images/chars/_derived/whiskr_speech_v1/warm/A.alpha.webp",
+        "whiskr_speech",
+        "mouth_alpha_mask",
+    )
+    add_row(
+        source_root,
+        rows,
         "images/chars/_derived/ally_animation_lab/"
         "expression_oral_layers_runtime89_mouth_only_v1/mouth_bed_mask.png",
         "ally_mouth",
@@ -179,6 +186,27 @@ def fixture_closure(tmp_path: Path) -> tuple[Path, Path, list[dict[str, object]]
         "images/chars/_derived/cast_speech_v1/almiro/blink/weight_018.webp",
         "cast_speech",
         "blink_overlay",
+    )
+    add_row(
+        source_root,
+        rows,
+        "images/chars/_derived/cast_speech_v1/almiro/blink/weight_018.alpha.webp",
+        "cast_speech",
+        "blink_alpha_mask",
+    )
+    add_row(
+        source_root,
+        rows,
+        "images/chars/_derived/cast_speech_v1/atlas/pulse/almiro.webp",
+        "cast_speech",
+        "semantic_pulse",
+    )
+    add_row(
+        source_root,
+        rows,
+        "images/chars/_derived/cast_speech_v1/atlas/pulse/almiro.alpha.webp",
+        "cast_speech",
+        "semantic_alpha_mask",
     )
     inventory = tmp_path / "closure.json"
     write_inventory(inventory, rows)
@@ -255,6 +283,17 @@ def test_builder_rejects_missing_dependency_and_experiment(tmp_path: Path) -> No
     write_inventory(inventory, rows)
     with pytest.raises(builder.PackBuildError, match="oral-motion closure drifted"):
         builder.build_pack(source_root, inventory, tmp_path / "pack")
+
+    masks = tmp_path / "missing-alpha-mask"
+    source_root, inventory, rows = fixture_closure(masks)
+    rows[:] = [
+        row
+        for row in rows
+        if row["media_role"] != "mouth_alpha_mask"
+    ]
+    write_inventory(inventory, rows)
+    with pytest.raises(builder.PackBuildError, match="lacks its exact mouth_alpha_mask"):
+        builder.build_pack(source_root, inventory, masks / "pack", version="v3")
 
     second = tmp_path / "experiment"
     source_root, inventory, rows = fixture_closure(second)

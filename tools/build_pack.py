@@ -39,17 +39,26 @@ CONTENT_TYPES = {
     ".webp": "image/webp",
 }
 ROLE_EXTENSIONS = {
+    "blink_alpha_mask": {".webp"},
     "blink_overlay": {".webp"},
     "living_portrait": {".webm"},
+    "mouth_alpha_mask": {".webp"},
     "mouth_atlas": {".webp"},
     "mouth_mask": {".png"},
     "mouth_sprite": {".png"},
     "oral_motion_patch": {".webm"},
     "portrait_transition": {".webm"},
+    "semantic_alpha_mask": {".webp"},
     "semantic_pulse": {".webp"},
     "thinking_contact_foreground": {".webm"},
 }
 ROLE_PATH_PATTERNS = {
+    "blink_alpha_mask": (
+        r"images/chars/_derived/cast_speech_v1/almiro/"
+        r"blink/weight_[0-9]{3}\.alpha\.webp",
+        r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
+        r"blink/[a-z0-9_]+/weight_[0-9]{3}\.alpha\.webp",
+    ),
     "blink_overlay": (
         r"images/chars/_derived/cast_speech_v1/almiro/"
         r"blink/weight_[0-9]{3}\.webp",
@@ -73,6 +82,14 @@ ROLE_PATH_PATTERNS = {
         r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
         r"source_warp_atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.webp",
     ),
+    "mouth_alpha_mask": (
+        r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
+        r"atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.alpha\.webp",
+        r"images/chars/_derived/whiskr_speech_v1/[a-z0-9_]+/"
+        r"[A-Za-z0-9_]+\.alpha\.webp",
+        r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
+        r"source_warp_atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.alpha\.webp",
+    ),
     "mouth_mask": (
         r"images/chars/_derived/ally_animation_lab/"
         r"expression_oral_layers_runtime89_mouth_only_v1/"
@@ -93,6 +110,10 @@ ROLE_PATH_PATTERNS = {
     "semantic_pulse": (
         r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
         r"[a-z0-9_]+\.webp",
+    ),
+    "semantic_alpha_mask": (
+        r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
+        r"[a-z0-9_]+\.alpha\.webp",
     ),
     "thinking_contact_foreground": (
         r"images/chars/_derived/ally_animation_lab/"
@@ -405,6 +426,44 @@ def load_inventory(
         "inventory_sha256": sha256_bytes(raw),
         "inventory_contract_sha256": inventory_contract_sha(public_rows),
     }
+
+
+def validate_alpha_mask_closure(rows: Sequence[Mapping[str, object]]) -> None:
+    by_path = {str(row["runtime_path"]): row for row in rows}
+    alpha_pairs = {
+        "blink_overlay": "blink_alpha_mask",
+        "mouth_atlas": "mouth_alpha_mask",
+        "semantic_pulse": "semantic_alpha_mask",
+    }
+    expected_masks: set[str] = set()
+    for row in rows:
+        role = str(row["media_role"])
+        mask_role = alpha_pairs.get(role)
+        if mask_role is None:
+            continue
+        runtime_path = str(row["runtime_path"])
+        mask_path = runtime_path[:-5] + ".alpha.webp"
+        expected_masks.add(mask_path)
+        mask = by_path.get(mask_path)
+        if (
+            mask is None
+            or mask.get("media_role") != mask_role
+            or mask.get("family") != row.get("family")
+        ):
+            raise PackBuildError(
+                f"{runtime_path} lacks its exact {mask_role}: {mask_path}"
+            )
+    observed_masks = {
+        str(row["runtime_path"])
+        for row in rows
+        if str(row["media_role"]) in set(alpha_pairs.values())
+    }
+    if observed_masks != expected_masks:
+        raise PackBuildError(
+            "alpha-mask closure drifted: "
+            f"missing={sorted(expected_masks - observed_masks)} "
+            f"extra={sorted(observed_masks - expected_masks)}"
+        )
 
 
 def validate_ally_dependency_closure(rows: Sequence[Mapping[str, object]]) -> None:
@@ -789,6 +848,8 @@ def build_pack(
     pack_root.mkdir(parents=True, exist_ok=True)
     validate_nojekyll(pack_root, create_missing=False if check else True)
     rows, metadata = load_inventory(inventory_path, source_root, candidate_sha)
+    if int(version[1:]) >= 3:
+        validate_alpha_mask_closure(rows)
     manifest = build_manifest(rows, metadata, version)
     stage_root = Path(tempfile.mkdtemp(prefix=".pack-build-", dir=pack_root))
     try:
