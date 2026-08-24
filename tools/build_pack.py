@@ -465,7 +465,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if int(version[1:]) >= 5:
+    if version == "v5":
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
