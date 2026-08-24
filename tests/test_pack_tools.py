@@ -213,6 +213,32 @@ def fixture_closure(tmp_path: Path) -> tuple[Path, Path, list[dict[str, object]]
     return source_root, inventory, rows
 
 
+def convert_fixture_masks_to_png(
+    source_root: Path, inventory: Path, rows: list[dict[str, object]]
+) -> None:
+    for row in rows:
+        if str(row["media_role"]) not in {
+            "blink_alpha_mask",
+            "mouth_alpha_mask",
+            "semantic_alpha_mask",
+        }:
+            continue
+        old_runtime_path = str(row["runtime_path"])
+        old_path = source_root / old_runtime_path
+        runtime_path = old_runtime_path[:-5] + ".png"
+        payload = media_bytes(runtime_path)
+        path = source_root / runtime_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+        old_path.unlink()
+        row.update(
+            runtime_path=runtime_path,
+            size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),
+        )
+    write_inventory(inventory, rows)
+
+
 def build_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
     source_root, inventory, _rows = fixture_closure(tmp_path)
     pack_root = tmp_path / "pack"
@@ -252,6 +278,23 @@ def test_deterministic_build_and_independent_verifier(tmp_path: Path) -> None:
     receipt = json.loads((pack_root / "v1/receipt.json").read_text())
     assert receipt["manifest"]["sha256"] == built["manifest_sha256"]
 
+
+def test_v4_uses_png_alpha_masks(tmp_path: Path) -> None:
+    source_root, inventory, rows = fixture_closure(tmp_path)
+    convert_fixture_masks_to_png(source_root, inventory, rows)
+    pack_root = tmp_path / "pack"
+    built = builder.build_pack(
+        source_root, inventory, pack_root, version="v4"
+    )
+    assert built["status"] == "passed"
+    manifest = json.loads((pack_root / "v4/manifest.json").read_text())
+    masks = [
+        row
+        for row in manifest["files"]
+        if str(row["media_role"]).endswith("alpha_mask")
+    ]
+    assert masks
+    assert all(str(row["runtime_path"]).endswith(".alpha.png") for row in masks)
 
 def test_verifier_rejects_tampered_and_extra_payloads(tmp_path: Path) -> None:
     _source_root, inventory, pack_root = build_fixture(tmp_path)

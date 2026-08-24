@@ -39,16 +39,16 @@ CONTENT_TYPES = {
     ".webp": "image/webp",
 }
 ROLE_EXTENSIONS = {
-    "blink_alpha_mask": {".webp"},
+    "blink_alpha_mask": {".png", ".webp"},
     "blink_overlay": {".webp"},
     "living_portrait": {".webm"},
-    "mouth_alpha_mask": {".webp"},
+    "mouth_alpha_mask": {".png", ".webp"},
     "mouth_atlas": {".webp"},
     "mouth_mask": {".png"},
     "mouth_sprite": {".png"},
     "oral_motion_patch": {".webm"},
     "portrait_transition": {".webm"},
-    "semantic_alpha_mask": {".webp"},
+    "semantic_alpha_mask": {".png", ".webp"},
     "semantic_pulse": {".webp"},
     "thinking_contact_foreground": {".webm"},
 }
@@ -58,6 +58,10 @@ ROLE_PATH_PATTERNS = {
         r"blink/weight_[0-9]{3}\.alpha\.webp",
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
         r"blink/[a-z0-9_]+/weight_[0-9]{3}\.alpha\.webp",
+        r"images/chars/_derived/cast_speech_v1/almiro/"
+        r"blink/weight_[0-9]{3}\.alpha\.png",
+        r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
+        r"blink/[a-z0-9_]+/weight_[0-9]{3}\.alpha\.png",
     ),
     "blink_overlay": (
         r"images/chars/_derived/cast_speech_v1/almiro/"
@@ -89,6 +93,12 @@ ROLE_PATH_PATTERNS = {
         r"[A-Za-z0-9_]+\.alpha\.webp",
         r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
         r"source_warp_atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.alpha\.webp",
+        r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
+        r"atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.alpha\.png",
+        r"images/chars/_derived/whiskr_speech_v1/[a-z0-9_]+/"
+        r"[A-Za-z0-9_]+\.alpha\.png",
+        r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
+        r"source_warp_atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.alpha\.png",
     ),
     "mouth_mask": (
         r"images/chars/_derived/ally_animation_lab/"
@@ -114,6 +124,8 @@ ROLE_PATH_PATTERNS = {
     "semantic_alpha_mask": (
         r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
         r"[a-z0-9_]+\.alpha\.webp",
+        r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
+        r"[a-z0-9_]+\.alpha\.png",
     ),
     "thinking_contact_foreground": (
         r"images/chars/_derived/ally_animation_lab/"
@@ -428,7 +440,9 @@ def load_inventory(
     }
 
 
-def validate_alpha_mask_closure(rows: Sequence[Mapping[str, object]]) -> None:
+def validate_alpha_mask_closure(
+    rows: Sequence[Mapping[str, object]], version: str
+) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
     alpha_pairs = {
         "blink_overlay": "blink_alpha_mask",
@@ -442,7 +456,8 @@ def validate_alpha_mask_closure(rows: Sequence[Mapping[str, object]]) -> None:
         if mask_role is None:
             continue
         runtime_path = str(row["runtime_path"])
-        mask_path = runtime_path[:-5] + ".alpha.webp"
+        mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
+        mask_path = runtime_path[:-5] + mask_extension
         expected_masks.add(mask_path)
         mask = by_path.get(mask_path)
         if (
@@ -849,7 +864,7 @@ def build_pack(
     validate_nojekyll(pack_root, create_missing=False if check else True)
     rows, metadata = load_inventory(inventory_path, source_root, candidate_sha)
     if int(version[1:]) >= 3:
-        validate_alpha_mask_closure(rows)
+        validate_alpha_mask_closure(rows, version)
     manifest = build_manifest(rows, metadata, version)
     stage_root = Path(tempfile.mkdtemp(prefix=".pack-build-", dir=pack_root))
     try:
