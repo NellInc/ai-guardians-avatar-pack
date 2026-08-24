@@ -354,14 +354,24 @@ def test_check_rejects_identical_payload_symlink(tmp_path: Path) -> None:
         builder.build_pack(source_root, inventory, pack_root, check=True)
 
 
-def test_current_contract_rejects_uncoordinated_version_and_nojekyll_symlink(
+def test_versioned_successor_and_nojekyll_symlink_contract(
     tmp_path: Path,
 ) -> None:
     source_root, inventory, pack_root = build_fixture(tmp_path)
-    with pytest.raises(builder.PackBuildError, match="sealed only for v1"):
-        builder.build_pack(source_root, inventory, pack_root, version="v2")
-    with pytest.raises(verifier.PackVerificationError, match="sealed only for v1"):
-        verifier.verify_pack(pack_root, version="v2", inventory_path=inventory)
+    successor = builder.build_pack(
+        source_root, inventory, pack_root, version="v2"
+    )
+    assert successor["version"] == "v2"
+    assert verifier.verify_pack(
+        pack_root, version="v2", inventory_path=inventory
+    )["status"] == "passed"
+    for invalid in ("v0", "v01", "V2", "v2/escape"):
+        with pytest.raises(builder.PackBuildError, match="invalid immutable pack version"):
+            builder.build_pack(source_root, inventory, pack_root, version=invalid)
+        with pytest.raises(
+            verifier.PackVerificationError, match="invalid immutable pack version"
+        ):
+            verifier.verify_pack(pack_root, version=invalid, inventory_path=inventory)
 
     nojekyll_target = tmp_path / "empty-file"
     nojekyll_target.touch()

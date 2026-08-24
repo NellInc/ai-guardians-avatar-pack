@@ -25,6 +25,7 @@ SCHEMA = 1
 STATUS = "immutable_production_runtime_asset_pack"
 INVENTORY_STATUS = "p2_product_freeze"
 DEFAULT_VERSION = "v1"
+VERSION_PATTERN = re.compile(r"v[1-9][0-9]*")
 MAX_FILE_BYTES = 50_000_000
 MANIFEST_ROW_KEYS = frozenset(
     {"family", "media_role", "path", "runtime_path", "sha256", "size"}
@@ -780,10 +781,8 @@ def build_pack(
     candidate_sha: str | None = None,
     check: bool = False,
 ) -> dict[str, object]:
-    if version != DEFAULT_VERSION:
-        raise PackBuildError(
-            f"this source/runtime contract is sealed only for {DEFAULT_VERSION}: {version!r}"
-        )
+    if VERSION_PATTERN.fullmatch(version) is None:
+        raise PackBuildError(f"invalid immutable pack version: {version!r}")
     source_root = source_root.resolve(strict=True)
     inventory_path = inventory_path.resolve(strict=True)
     pack_root = pack_root.resolve()

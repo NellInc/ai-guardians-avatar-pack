@@ -12,12 +12,28 @@ This repository is the immutable public runtime-media backing store for AI Guard
 * Runtime contract SHA-256: `1fc3399ca9a79a5fb9033ae9119269d6fe3e98fecaa11f5f27678b381c393b0b`
 * Manifest SHA-256: `77fbe4e2fbffd6cc9447cca2743be13ab5e0d6f40e139b408c33a347b02e2822`
 
+## Version v2
+
+* Source candidate: `2bb803d978378aab79bc4b2f1690993fee313c82`
+* Runtime media: 9,089 files, 243,131,943 bytes
+* Media types: 8,415 WebP, 521 WebM, 153 PNG
+* Source inventory SHA-256: `96d0466ddff27017c6f840efeaa18c98d4773ba8e62da6ece5ff4eb6414e0f3e`
+* Runtime contract SHA-256: `82542ecf33b5754b4584732d6794df87c46afd0f6f0933eb40084f53224327c8`
+* Manifest SHA-256: `7a62d4e446ca2276d1150f2f24a5049443921974a7684e24e7337f9065a7506d`
+
+Version v2 preserves every v1 runtime path and replaces the 38 A.L.L.Y. oral
+motion and thinking foreground overlays with deterministic VP9 Profile 0,
+`yuv420p` encodes. This is the WebKit compatible successor to v1. Every
+converted clip preserves its dimensions, frame rate, frame count, and duration.
+The bitexact encode contract uses libvpx-vp9 CRF 12, one thread, stripped
+metadata, and two byte-identical independent passes per file.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
-Version v1 becomes immutable when published. A future changed byte requires a
-coordinated new manifest/runtime contract and a new version directory. These
-v1 tools deliberately reject other version names so the CDN producer cannot
-outrun the shipped runtime consumer.
+Each version becomes immutable when published. A changed byte requires a
+coordinated new manifest/runtime contract, a new `vN` directory, and a shipped
+runtime consumer pinned to that version. The tools reject malformed version
+names and verify every requested version against its exact closure inventory.
 
 ## Scope
 

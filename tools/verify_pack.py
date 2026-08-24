@@ -15,6 +15,7 @@ from pathlib import Path, PurePosixPath
 SCHEMA = 1
 STATUS = "immutable_production_runtime_asset_pack"
 INVENTORY_STATUS = "p2_product_freeze"
+VERSION_PATTERN = re.compile(r"v[1-9][0-9]*")
 MAX_FILE_BYTES = 50_000_000
 TOP_LEVEL_KEYS = frozenset(
     {
@@ -734,10 +735,8 @@ def verify_pack(
     allow_transactional_backup: bool = False,
 ) -> dict[str, object]:
     pack_root = pack_root.resolve(strict=True)
-    if version != "v1":
-        raise PackVerificationError(
-            f"this source/runtime contract is sealed only for v1: {version!r}"
-        )
+    if VERSION_PATTERN.fullmatch(version) is None:
+        raise PackVerificationError(f"invalid immutable pack version: {version!r}")
     stale_backup = pack_root / f".{version}.prebuild-backup"
     backup_present = stale_backup.exists() or stale_backup.is_symlink()
     if backup_present and not allow_transactional_backup:
