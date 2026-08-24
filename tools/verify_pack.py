@@ -46,15 +46,18 @@ CONTENT_TYPES = {
 ROLE_EXTENSIONS = {
     "blink_alpha_mask": {".png", ".webp"},
     "blink_overlay": {".webp"},
+    "blink_rgba_layer": {".png"},
     "living_portrait": {".webm"},
     "mouth_alpha_mask": {".png", ".webp"},
     "mouth_atlas": {".webp"},
+    "mouth_rgba_layer": {".png"},
     "mouth_mask": {".png"},
     "mouth_sprite": {".png"},
     "oral_motion_patch": {".webm"},
     "portrait_transition": {".webm"},
     "semantic_alpha_mask": {".png", ".webp"},
     "semantic_pulse": {".webp"},
+    "semantic_rgba_layer": {".png"},
     "thinking_contact_foreground": {".webm"},
 }
 ROLE_PATH_PATTERNS = {
@@ -73,6 +76,12 @@ ROLE_PATH_PATTERNS = {
         r"blink/weight_[0-9]{3}\.webp",
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
         r"blink/[a-z0-9_]+/weight_[0-9]{3}\.webp",
+    ),
+    "blink_rgba_layer": (
+        r"images/chars/_derived/cast_speech_v1/almiro/"
+        r"blink/weight_[0-9]{3}\.rgba\.png",
+        r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
+        r"blink/[a-z0-9_]+/weight_[0-9]{3}\.rgba\.png",
     ),
     "living_portrait": (
         r"images/chars/_derived/cast_living_v1/(?P<rig>[a-z0-9_]+)/"
@@ -105,6 +114,14 @@ ROLE_PATH_PATTERNS = {
         r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
         r"source_warp_atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.alpha\.png",
     ),
+    "mouth_rgba_layer": (
+        r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
+        r"atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.rgba\.png",
+        r"images/chars/_derived/whiskr_speech_v1/[a-z0-9_]+/"
+        r"[A-Za-z0-9_]+\.rgba\.png",
+        r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
+        r"source_warp_atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.rgba\.png",
+    ),
     "mouth_mask": (
         r"images/chars/_derived/ally_animation_lab/"
         r"expression_oral_layers_runtime89_mouth_only_v1/"
@@ -125,6 +142,10 @@ ROLE_PATH_PATTERNS = {
     "semantic_pulse": (
         r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
         r"[a-z0-9_]+\.webp",
+    ),
+    "semantic_rgba_layer": (
+        r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
+        r"[a-z0-9_]+\.rgba\.png",
     ),
     "semantic_alpha_mask": (
         r"images/chars/_derived/cast_speech_v1/atlas/pulse/"
@@ -341,11 +362,20 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    alpha_pairs = {
-        "blink_overlay": "blink_alpha_mask",
-        "mouth_atlas": "mouth_alpha_mask",
-        "semantic_pulse": "semantic_alpha_mask",
-    }
+    if int(version[1:]) >= 5:
+        alpha_pairs = {
+            "blink_overlay": "blink_rgba_layer",
+            "mouth_atlas": "mouth_rgba_layer",
+            "semantic_pulse": "semantic_rgba_layer",
+        }
+        mask_extension = ".rgba.png"
+    else:
+        alpha_pairs = {
+            "blink_overlay": "blink_alpha_mask",
+            "mouth_atlas": "mouth_alpha_mask",
+            "semantic_pulse": "semantic_alpha_mask",
+        }
+        mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
     expected_masks: set[str] = set()
     for row in rows:
         role = str(row["media_role"])
@@ -353,7 +383,6 @@ def validate_alpha_mask_closure(
         if mask_role is None:
             continue
         runtime_path = str(row["runtime_path"])
-        mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
         mask_path = runtime_path[:-5] + mask_extension
         expected_masks.add(mask_path)
         mask = by_path.get(mask_path)

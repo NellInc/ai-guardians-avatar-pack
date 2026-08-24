@@ -28,6 +28,20 @@ converted clip preserves its dimensions, frame rate, frame count, and duration.
 The bitexact encode contract uses libvpx-vp9 CRF 12, one thread, stripped
 metadata, and two byte-identical independent passes per file.
 
+## Version v5
+
+* Source candidate: `35883b11bbc49724a929cafbb3430df7fe617485`
+* Runtime media: 17,504 files, 766,512,587 bytes
+* Media types: 8,568 PNG, 521 WebM, 8,415 WebP
+* Source inventory SHA-256: `b42ce863fc0590696ac46c99090797649add9d1c6a76c2e11f35dc1d13dcef60`
+* Runtime contract SHA-256: `4abc138d87f6c3fb0e0b374e95cd69aa87975ed5fbc381be55952a8eae738ece`
+* Manifest SHA-256: `6c251c082d517371986310056f95346b871a73ab238f6a49baf5b3c1627c6ebf`
+
+Version v5 pairs every production mouth, blink, and semantic WebP layer with a
+lossless, directly compositable RGBA PNG. The PNG carries the source color and
+alpha channels exactly, avoiding WebKit's opaque WebP backing and any secondary
+mask shader. Versions v3 and v4 remain immutable diagnostic predecessors.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a
