@@ -161,6 +161,15 @@ def fixture_closure(tmp_path: Path) -> tuple[Path, Path, list[dict[str, object]]
     add_row(
         source_root,
         rows,
+        "images/chars/_derived/cast_living_successors_v1/"
+        "expression_expansion_v2/creedle_ai/"
+        "creedle_ai_normal_alive_v1.webm",
+        "cast_living",
+        "living_portrait",
+    )
+    add_row(
+        source_root,
+        rows,
         "images/chars/_derived/whiskr_speech_v1/warm/A.webp",
         "whiskr_speech",
         "mouth_atlas",
@@ -239,6 +248,35 @@ def convert_fixture_masks_to_png(
     write_inventory(inventory, rows)
 
 
+def convert_fixture_masks_to_rgba(
+    source_root: Path, inventory: Path, rows: list[dict[str, object]]
+) -> None:
+    role_map = {
+        "blink_alpha_mask": "blink_rgba_layer",
+        "mouth_alpha_mask": "mouth_rgba_layer",
+        "semantic_alpha_mask": "semantic_rgba_layer",
+    }
+    for row in rows:
+        old_role = str(row["media_role"])
+        if old_role not in role_map:
+            continue
+        old_runtime_path = str(row["runtime_path"])
+        old_path = source_root / old_runtime_path
+        runtime_path = old_runtime_path[:-11] + ".rgba.png"
+        payload = media_bytes(runtime_path)
+        path = source_root / runtime_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+        old_path.unlink()
+        row.update(
+            runtime_path=runtime_path,
+            size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),
+            media_role=role_map[old_role],
+        )
+    write_inventory(inventory, rows)
+
+
 def build_fixture(tmp_path: Path) -> tuple[Path, Path, Path]:
     source_root, inventory, _rows = fixture_closure(tmp_path)
     pack_root = tmp_path / "pack"
@@ -295,6 +333,22 @@ def test_v4_uses_png_alpha_masks(tmp_path: Path) -> None:
     ]
     assert masks
     assert all(str(row["runtime_path"]).endswith(".alpha.png") for row in masks)
+
+
+def test_v7_uses_direct_rgba_layers(tmp_path: Path) -> None:
+    source_root, inventory, rows = fixture_closure(tmp_path)
+    convert_fixture_masks_to_rgba(source_root, inventory, rows)
+    pack_root = tmp_path / "pack"
+    built = builder.build_pack(source_root, inventory, pack_root, version="v7")
+    assert built["status"] == "passed"
+    manifest = json.loads((pack_root / "v7/manifest.json").read_text())
+    layers = [
+        row
+        for row in manifest["files"]
+        if str(row["media_role"]).endswith("rgba_layer")
+    ]
+    assert layers
+    assert all(str(row["runtime_path"]).endswith(".rgba.png") for row in layers)
 
 def test_verifier_rejects_tampered_and_extra_payloads(tmp_path: Path) -> None:
     _source_root, inventory, pack_root = build_fixture(tmp_path)

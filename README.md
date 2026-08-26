@@ -42,6 +42,21 @@ lossless, directly compositable RGBA PNG. The PNG carries the source color and
 alpha channels exactly, avoiding WebKit's opaque WebP backing and any secondary
 mask shader. Versions v3 and v4 remain immutable diagnostic predecessors.
 
+## Version v7
+
+* Source candidate: `8aa3b439c1534482baaa86861369e78a1517e884`
+* Runtime media: 17,531 files, 771,343,169 bytes
+* Media types: 8,568 PNG, 548 WebM, 8,415 WebP
+* Source inventory SHA-256: `ba0107f00b310fbca526668d19a7d2e0687a97b93a0f1c39eab242d5c2df6630`
+* Source inventory contract SHA-256: `0b36ec1a79969c060dfd8e56b4e05a20a5b95228cc1c4a3b46da51736d2fea8f`
+* Runtime contract SHA-256: `8c26ab7569575801adef69b35be2c571c9ffecbd56ad5a4295f7558f9d0f54dc`
+* Manifest SHA-256: `f7482f76c7a1f7f465fd2f03861f33a5e4210afdbf0182a895fa85657f079eeb`
+
+Version v7 retains v5's direct RGBA WebKit compositor contract. It replaces
+nine retired single-expression cast living portraits with the 36 accepted
+four-expression successors used by the production registry. Version v6 remains
+an immutable diagnostic predecessor.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a

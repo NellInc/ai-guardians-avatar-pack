@@ -86,6 +86,9 @@ ROLE_PATH_PATTERNS = {
     "living_portrait": (
         r"images/chars/_derived/cast_living_v1/(?P<rig>[a-z0-9_]+)/"
         r"(?P=rig)_[a-z0-9_]+_alive_v1\.webm",
+        r"images/chars/_derived/cast_living_successors_v1/"
+        r"expression_expansion_v2/(?P<successor_rig>[a-z0-9_]+)/"
+        r"(?P=successor_rig)_[a-z0-9_]+_alive_v1\.webm",
         r"images/chars/_derived/whiskr_speech_v1/living/"
         r"whiskr_[a-z0-9_]+_alive_v1\.webm",
         r"images/chars/_derived/yuki_video_avatar_pilot_v1/"
@@ -160,6 +163,7 @@ ROLE_PATH_PATTERNS = {
 }
 ALLOWED_TREES = (
     "images/chars/_derived/cast_living_v1",
+    "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
     "images/chars/_derived/cast_speech_v1",
     "images/chars/_derived/whiskr_speech_v1",
     "images/chars/_derived/yuki_video_avatar_pilot_v1",
@@ -362,7 +366,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version == "v5":
+    if version in {"v5", "v7"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
