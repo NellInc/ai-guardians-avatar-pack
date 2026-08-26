@@ -71,12 +71,16 @@ ROLE_PATH_PATTERNS = {
         r"blink/weight_[0-9]{3}\.webp",
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
         r"blink/[a-z0-9_]+/weight_[0-9]{3}\.webp",
+        r"images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/"
+        r"v[1-9][0-9]*/blink/[a-z0-9_]+/weight_[0-9]{3}\.webp",
     ),
     "blink_rgba_layer": (
         r"images/chars/_derived/cast_speech_v1/almiro/"
         r"blink/weight_[0-9]{3}\.rgba\.png",
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
         r"blink/[a-z0-9_]+/weight_[0-9]{3}\.rgba\.png",
+        r"images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/"
+        r"v[1-9][0-9]*/blink/[a-z0-9_]+/weight_[0-9]{3}\.rgba\.png",
     ),
     "living_portrait": (
         r"images/chars/_derived/cast_living_v1/(?P<rig>[a-z0-9_]+)/"
@@ -93,6 +97,8 @@ ROLE_PATH_PATTERNS = {
     "mouth_atlas": (
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
         r"atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.webp",
+        r"images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/"
+        r"v[1-9][0-9]*/atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.webp",
         r"images/chars/_derived/whiskr_speech_v1/[a-z0-9_]+/"
         r"[A-Za-z0-9_]+\.webp",
         r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
@@ -115,6 +121,8 @@ ROLE_PATH_PATTERNS = {
     "mouth_rgba_layer": (
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
         r"atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.rgba\.png",
+        r"images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/"
+        r"v[1-9][0-9]*/atlases/[a-z0-9_]+/[A-Za-z0-9_]+\.rgba\.png",
         r"images/chars/_derived/whiskr_speech_v1/[a-z0-9_]+/"
         r"[A-Za-z0-9_]+\.rgba\.png",
         r"images/chars/_derived/yuki_speech_lab/benchmark_v2/"
@@ -160,6 +168,7 @@ ALLOWED_TREES = (
     "images/chars/_derived/cast_living_v1",
     "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
     "images/chars/_derived/cast_speech_v1",
+    "images/chars/_derived/cast_speech_successors_v1",
     "images/chars/_derived/whiskr_speech_v1",
     "images/chars/_derived/yuki_video_avatar_pilot_v1",
     "images/chars/_derived/yuki_speech_lab/benchmark_v2/source_warp_atlases",
@@ -469,7 +478,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7"}:
+    if version in {"v5", "v7", "v8"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",

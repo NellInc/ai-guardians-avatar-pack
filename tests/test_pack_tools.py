@@ -335,13 +335,14 @@ def test_v4_uses_png_alpha_masks(tmp_path: Path) -> None:
     assert all(str(row["runtime_path"]).endswith(".alpha.png") for row in masks)
 
 
-def test_v7_uses_direct_rgba_layers(tmp_path: Path) -> None:
+@pytest.mark.parametrize("version", ("v7", "v8"))
+def test_direct_rgba_pack_versions(tmp_path: Path, version: str) -> None:
     source_root, inventory, rows = fixture_closure(tmp_path)
     convert_fixture_masks_to_rgba(source_root, inventory, rows)
     pack_root = tmp_path / "pack"
-    built = builder.build_pack(source_root, inventory, pack_root, version="v7")
+    built = builder.build_pack(source_root, inventory, pack_root, version=version)
     assert built["status"] == "passed"
-    manifest = json.loads((pack_root / "v7/manifest.json").read_text())
+    manifest = json.loads((pack_root / version / "manifest.json").read_text())
     layers = [
         row
         for row in manifest["files"]
@@ -349,6 +350,44 @@ def test_v7_uses_direct_rgba_layers(tmp_path: Path) -> None:
     ]
     assert layers
     assert all(str(row["runtime_path"]).endswith(".rgba.png") for row in layers)
+
+
+@pytest.mark.parametrize("module", (builder, verifier))
+@pytest.mark.parametrize(
+    ("runtime_path", "role"),
+    (
+        (
+            "images/chars/_derived/cast_speech_successors_v1/creedle_ai/"
+            "v9/atlases/warm/A.webp",
+            "mouth_atlas",
+        ),
+        (
+            "images/chars/_derived/cast_speech_successors_v1/creedle_ai/"
+            "v9/atlases/warm/A.rgba.png",
+            "mouth_rgba_layer",
+        ),
+        (
+            "images/chars/_derived/cast_speech_successors_v1/creedle_ai/"
+            "v9/blink/warm/weight_018.webp",
+            "blink_overlay",
+        ),
+        (
+            "images/chars/_derived/cast_speech_successors_v1/creedle_ai/"
+            "v9/blink/warm/weight_018.rgba.png",
+            "blink_rgba_layer",
+        ),
+    ),
+)
+def test_versioned_cast_speech_successor_namespaces(
+    module: object, runtime_path: str, role: str
+) -> None:
+    if module is builder:
+        assert module.validate_media_contract(runtime_path, "cast_speech", role) == (
+            "cast_speech",
+            role,
+        )
+    else:
+        assert module.role_path_matches(runtime_path, role)
 
 def test_verifier_rejects_tampered_and_extra_payloads(tmp_path: Path) -> None:
     _source_root, inventory, pack_root = build_fixture(tmp_path)

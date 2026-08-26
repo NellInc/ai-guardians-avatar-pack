@@ -57,6 +57,22 @@ nine retired single-expression cast living portraits with the 36 accepted
 four-expression successors used by the production registry. Version v6 remains
 an immutable diagnostic predecessor.
 
+## Version v8
+
+* Source candidate: `a9b205e40c0c98845cf098d5361955b3df37cb94`
+* Runtime media: 18,413 files, 779,449,383 bytes
+* Media types: 9,009 PNG, 548 WebM, 8,856 WebP
+* Source inventory SHA-256: `9565e7dd572885744449568a63e5839328e3e5fe95898f80fae03cbfaba5a017`
+* Source inventory contract SHA-256: `960ab7cb667d30bb7472168661d2fdaebab6c91ce530ac088b4173eba79b5941`
+* Runtime contract SHA-256: `d99fbc67c9320ab98314aede1367742ffe9e7aefcf7f9376dab3845d121a0524`
+* Manifest SHA-256: `ecfefbc6ba90d8731bf31c3661bed612a363b7d281957b6abbb2516161689e12`
+
+Version v8 replaces nine retired single-expression cast speech rigs with the
+612 accepted four-expression versioned successor WebP layers used by the
+production registry. Every successor layer has a lossless, directly
+compositable RGBA PNG peer for WebKit. Version v8 preserves v7's accepted living
+portrait successors, A.L.L.Y. transitions, and direct RGBA compositor contract.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a
