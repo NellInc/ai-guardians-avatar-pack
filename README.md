@@ -73,6 +73,28 @@ production registry. Every successor layer has a lossless, directly
 compositable RGBA PNG peer for WebKit. Version v8 preserves v7's accepted living
 portrait successors, A.L.L.Y. transitions, and direct RGBA compositor contract.
 
+## Version v9
+
+* Source candidate: `fb0e21e9e268b3daa6226cff3f018f105308385b`
+* Runtime media: 18,395 files, 778,041,820 bytes
+* Media types: 9,000 PNG, 548 WebM, 8,847 WebP
+* Source inventory SHA-256: `2a981cb060cd2f6ca2c5066acb524f953ac6c908dc6ace118bd83be6d881786c`
+* Source inventory contract SHA-256: `79edd8c51f560fb5f20fc22c3abc2fba8693ef5f43f034db979c7c42bd7d8ebf`
+* Runtime contract SHA-256: `bc932da4fe5a3b88d03eef895a2e4ddb31939d12e1f2c8952e32ce4c64f37691`
+* Manifest SHA-256: `140b73214f99a8a3cfc269d057ade24c2f89b9ff87e8c8aa88e6d5b644151106`
+
+Version v9 must be seeded from the exact published v8 manifest with SHA-256
+`ecfefbc6ba90d8731bf31c3661bed612a363b7d281957b6abbb2516161689e12`
+and runtime contract
+`d99fbc67c9320ab98314aede1367742ffe9e7aefcf7f9376dab3845d121a0524`.
+The builder verifies every referenced seed payload before reuse. Inventory rows
+whose complete identity still matches v8 come only from that verified seed;
+new or changed rows come from the exact candidate source tree. A directory copy
+is never accepted as a seed contract. Version v9 retains direct, lossless RGBA
+PNG peers for every production mouth, blink, and semantic WebP layer. It also
+admits the accepted Audience and Zach living successor namespaces under
+`cast_living_successors_v1/`.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a
@@ -130,6 +152,30 @@ python3 tools/build_pack.py \
   --inventory /absolute/path/to/p2_external_closure.json \
   --candidate-sha <exact-p2-commit>
 ```
+
+An immutable v9 build additionally requires the verified local v8 payload root
+and the exact live v8 manifest. The retained root may contain unlisted files;
+only manifest members with matching bytes are eligible for seed reuse:
+
+The clean game source stores WebP mouth and blink layers. It does not store the
+direct RGBA PNG transport peers. For v9, the builder reproduces a missing peer
+from its same-path WebP with Pillow 12.0.0 and requires the resulting PNG size
+and SHA-256 to match the frozen inventory. A present but stale PNG fails rather
+than being regenerated. This keeps the pack reproducible from a clean source
+commit without accepting an unrecorded temporary overlay.
+
+```bash
+python3 tools/build_pack.py \
+  --source-root /absolute/path/to/Contents/Resources/autorun/game \
+  --inventory /absolute/path/to/p2_external_closure_v9.json \
+  --candidate-sha <exact-v9-source-commit> \
+  --version v9 \
+  --seed-manifest /absolute/path/to/avatar-pack-v8-live-manifest.json \
+  --seed-root /absolute/path/to/verified-v8-source
+```
+
+Use the same v9 seed arguments for the byte-identical rebuild, adding only
+`--check`.
 
 Prove that a second build is byte-identical without modifying the pack:
 

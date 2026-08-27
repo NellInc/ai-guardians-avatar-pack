@@ -321,9 +321,7 @@ def test_v4_uses_png_alpha_masks(tmp_path: Path) -> None:
     source_root, inventory, rows = fixture_closure(tmp_path)
     convert_fixture_masks_to_png(source_root, inventory, rows)
     pack_root = tmp_path / "pack"
-    built = builder.build_pack(
-        source_root, inventory, pack_root, version="v4"
-    )
+    built = builder.build_pack(source_root, inventory, pack_root, version="v4")
     assert built["status"] == "passed"
     manifest = json.loads((pack_root / "v4/manifest.json").read_text())
     masks = [
@@ -350,6 +348,130 @@ def test_direct_rgba_pack_versions(tmp_path: Path, version: str) -> None:
     ]
     assert layers
     assert all(str(row["runtime_path"]).endswith(".rgba.png") for row in layers)
+
+
+def test_v9_requires_direct_rgba_and_verified_v8_seed(tmp_path: Path) -> None:
+    source_root, inventory, rows = fixture_closure(tmp_path)
+    convert_fixture_masks_to_rgba(source_root, inventory, rows)
+    loaded, _metadata = builder.load_inventory(inventory, source_root, None)
+    builder.validate_alpha_mask_closure(loaded, "v9")
+    verifier.validate_alpha_mask_closure(loaded, "v9")
+
+    without_peer = [
+        row for row in loaded if not str(row["runtime_path"]).endswith(".rgba.png")
+    ]
+    with pytest.raises(builder.PackBuildError, match="lacks its exact.*rgba"):
+        builder.validate_alpha_mask_closure(without_peer, "v9")
+    with pytest.raises(verifier.PackVerificationError, match="lacks its exact.*rgba"):
+        verifier.validate_alpha_mask_closure(without_peer, "v9")
+    with pytest.raises(builder.PackBuildError, match="exact live v8"):
+        builder.build_pack(source_root, inventory, tmp_path / "pack", version="v9")
+
+
+def test_v9_rejects_noncanonical_seed_manifest(tmp_path: Path) -> None:
+    assert builder.V9_SEED_VERSION == verifier.V9_SEED_VERSION == "v8"
+    assert builder.V9_SEED_MANIFEST_SHA256 == verifier.V9_SEED_MANIFEST_SHA256
+    assert builder.V9_SEED_CONTRACT_SHA256 == verifier.V9_SEED_CONTRACT_SHA256
+    seed_manifest = tmp_path / "manifest.json"
+    seed_manifest.write_text("{}\n")
+    seed_root = tmp_path / "seed"
+    seed_root.mkdir()
+    with pytest.raises(builder.PackBuildError, match="verified live v8 authority"):
+        builder.load_v9_seed_manifest(seed_manifest, seed_root)
+
+
+def test_inventory_reuses_only_exact_seed_identity(tmp_path: Path) -> None:
+    source_root, inventory, rows = fixture_closure(tmp_path)
+    row = rows[0]
+    runtime_path = str(row["runtime_path"])
+    seed_source = tmp_path / "seed" / runtime_path
+    seed_source.parent.mkdir(parents=True)
+    seed_source.write_bytes((source_root / runtime_path).read_bytes())
+    seed_row = dict(row)
+    seed_row["_source"] = seed_source
+    (source_root / runtime_path).write_bytes(b"changed overlay")
+
+    loaded, metadata = builder.load_inventory(
+        inventory, source_root, None, seed_rows={runtime_path: seed_row}
+    )
+    selected = next(item for item in loaded if item["runtime_path"] == runtime_path)
+    assert selected["_source"] == seed_source
+    assert metadata["seeded_files"] == 1
+    assert metadata["overlay_files"] == len(rows) - 1
+
+
+def test_inventory_reproduces_missing_direct_rgba_peer(tmp_path: Path) -> None:
+    from PIL import Image
+
+    source_root, inventory, rows = fixture_closure(tmp_path)
+    webp_runtime = (
+        "images/chars/_derived/cast_speech_successors_v1/creedle_ai/"
+        "v9/atlases/warm/A.webp"
+    )
+    rgba_runtime = webp_runtime.removesuffix(".webp") + ".rgba.png"
+    webp = source_root / webp_runtime
+    webp.parent.mkdir(parents=True)
+    with Image.new("RGBA", (8, 6), (37, 83, 149, 191)) as image:
+        image.save(webp, format="WEBP", lossless=True)
+    expected = tmp_path / "expected.png"
+    with Image.open(webp) as image, image.convert("RGBA") as rgba:
+        rgba.save(expected, format="PNG", optimize=True)
+    rows.extend(
+        [
+            {
+                "runtime_path": webp_runtime,
+                "size": webp.stat().st_size,
+                "sha256": hashlib.sha256(webp.read_bytes()).hexdigest(),
+                "family": "cast_speech",
+                "media_role": "mouth_atlas",
+            },
+            {
+                "runtime_path": rgba_runtime,
+                "size": expected.stat().st_size,
+                "sha256": hashlib.sha256(expected.read_bytes()).hexdigest(),
+                "family": "cast_speech",
+                "media_role": "mouth_rgba_layer",
+            },
+        ]
+    )
+    write_inventory(inventory, rows)
+    derived_root = tmp_path / "derived"
+    loaded, metadata = builder.load_inventory(
+        inventory, source_root, None, derived_root=derived_root
+    )
+    peer = next(row for row in loaded if row["runtime_path"] == rgba_runtime)
+    reproduced = Path(str(peer["_source"]))
+    assert reproduced.read_bytes() == expected.read_bytes()
+    assert reproduced.is_relative_to(derived_root)
+    assert metadata["overlay_files"] == len(rows)
+
+    stale_source_peer = source_root / rgba_runtime
+    stale_source_peer.parent.mkdir(parents=True, exist_ok=True)
+    stale_source_peer.write_bytes(b"stale")
+    with pytest.raises(builder.PackBuildError, match="frozen source drifted"):
+        builder.load_inventory(
+            inventory, source_root, None, derived_root=tmp_path / "second-derived"
+        )
+
+
+def test_direct_rgba_reproduction_requires_pinned_pillow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from PIL import Image
+
+    source_root = tmp_path / "source"
+    runtime_path = (
+        "images/chars/_derived/cast_speech_successors_v1/creedle_ai/"
+        "v9/atlases/warm/A.rgba.png"
+    )
+    webp = source_root / runtime_path.removesuffix(".rgba.png")
+    webp = webp.with_suffix(".webp")
+    webp.parent.mkdir(parents=True)
+    with Image.new("RGBA", (2, 2), (1, 2, 3, 4)) as image:
+        image.save(webp, format="WEBP", lossless=True)
+    monkeypatch.setattr(builder, "DIRECT_RGBA_PILLOW_VERSION", "0.0.0")
+    with pytest.raises(builder.PackBuildError, match="requires Pillow 0.0.0"):
+        builder.derive_direct_rgba_peer(source_root, runtime_path, tmp_path / "derived")
 
 
 @pytest.mark.parametrize("module", (builder, verifier))
@@ -389,6 +511,22 @@ def test_versioned_cast_speech_successor_namespaces(
     else:
         assert module.role_path_matches(runtime_path, role)
 
+
+@pytest.mark.parametrize("module", (builder, verifier))
+@pytest.mark.parametrize("rig", ("audience", "zach"))
+def test_promoted_living_successor_namespaces(module: object, rig: str) -> None:
+    runtime_path = (
+        f"images/chars/_derived/cast_living_successors_v1/{rig}/v2/{rig}/"
+        f"{rig}_concerned_alive_v1.webm"
+    )
+    if module is builder:
+        assert module.validate_media_contract(
+            runtime_path, "cast_living", "living_portrait"
+        ) == ("cast_living", "living_portrait")
+    else:
+        assert module.role_path_matches(runtime_path, "living_portrait")
+
+
 def test_verifier_rejects_tampered_and_extra_payloads(tmp_path: Path) -> None:
     _source_root, inventory, pack_root = build_fixture(tmp_path)
     manifest = json.loads((pack_root / "v1/manifest.json").read_text())
@@ -422,13 +560,11 @@ def test_builder_rejects_missing_dependency_and_experiment(tmp_path: Path) -> No
 
     masks = tmp_path / "missing-alpha-mask"
     source_root, inventory, rows = fixture_closure(masks)
-    rows[:] = [
-        row
-        for row in rows
-        if row["media_role"] != "mouth_alpha_mask"
-    ]
+    rows[:] = [row for row in rows if row["media_role"] != "mouth_alpha_mask"]
     write_inventory(inventory, rows)
-    with pytest.raises(builder.PackBuildError, match="lacks its exact mouth_alpha_mask"):
+    with pytest.raises(
+        builder.PackBuildError, match="lacks its exact mouth_alpha_mask"
+    ):
         builder.build_pack(source_root, inventory, masks / "pack", version="v3")
 
     second = tmp_path / "experiment"
@@ -533,15 +669,18 @@ def test_versioned_successor_and_nojekyll_symlink_contract(
     tmp_path: Path,
 ) -> None:
     source_root, inventory, pack_root = build_fixture(tmp_path)
-    successor = builder.build_pack(
-        source_root, inventory, pack_root, version="v2"
-    )
+    successor = builder.build_pack(source_root, inventory, pack_root, version="v2")
     assert successor["version"] == "v2"
-    assert verifier.verify_pack(
-        pack_root, version="v2", inventory_path=inventory
-    )["status"] == "passed"
+    assert (
+        verifier.verify_pack(pack_root, version="v2", inventory_path=inventory)[
+            "status"
+        ]
+        == "passed"
+    )
     for invalid in ("v0", "v01", "V2", "v2/escape"):
-        with pytest.raises(builder.PackBuildError, match="invalid immutable pack version"):
+        with pytest.raises(
+            builder.PackBuildError, match="invalid immutable pack version"
+        ):
             builder.build_pack(source_root, inventory, pack_root, version=invalid)
         with pytest.raises(
             verifier.PackVerificationError, match="invalid immutable pack version"

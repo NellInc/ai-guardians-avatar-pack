@@ -17,6 +17,13 @@ STATUS = "immutable_production_runtime_asset_pack"
 INVENTORY_STATUS = "p2_product_freeze"
 VERSION_PATTERN = re.compile(r"v[1-9][0-9]*")
 MAX_FILE_BYTES = 50_000_000
+V9_SEED_VERSION = "v8"
+V9_SEED_MANIFEST_SHA256 = (
+    "ecfefbc6ba90d8731bf31c3661bed612a363b7d281957b6abbb2516161689e12"
+)
+V9_SEED_CONTRACT_SHA256 = (
+    "d99fbc67c9320ab98314aede1367742ffe9e7aefcf7f9376dab3845d121a0524"
+)
 TOP_LEVEL_KEYS = frozenset(
     {
         "schema",
@@ -93,6 +100,14 @@ ROLE_PATH_PATTERNS = {
         r"images/chars/_derived/cast_living_successors_v1/"
         r"expression_expansion_v2/(?P<successor_rig>[a-z0-9_]+)/"
         r"(?P=successor_rig)_[a-z0-9_]+_alive_v1\.webm",
+        (
+            r"images/chars/_derived/cast_living_successors_v1/audience/v2/audience/"
+            r"audience_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/zach/v2/zach/"
+            r"zach_[a-z0-9_]+_alive_v1\.webm"
+        ),
         r"images/chars/_derived/whiskr_speech_v1/living/"
         r"whiskr_[a-z0-9_]+_alive_v1\.webm",
         r"images/chars/_derived/yuki_video_avatar_pilot_v1/"
@@ -172,6 +187,8 @@ ROLE_PATH_PATTERNS = {
 ALLOWED_TREES = (
     "images/chars/_derived/cast_living_v1",
     "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
+    "images/chars/_derived/cast_living_successors_v1/audience/v2/audience",
+    "images/chars/_derived/cast_living_successors_v1/zach/v2/zach",
     "images/chars/_derived/cast_speech_v1",
     "images/chars/_derived/cast_speech_successors_v1",
     "images/chars/_derived/whiskr_speech_v1",
@@ -375,7 +392,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8"}:
+    if version in {"v5", "v7", "v8", "v9"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -891,12 +908,15 @@ def verify_pack(
     ):
         raise PackVerificationError("manifest schema/version/status drifted")
     source = manifest.get("source")
-    if not isinstance(source, Mapping) or set(source) != {
+    expected_source_keys = {
         "candidate_sha",
         "repository",
         "inventory_sha256",
         "inventory_contract_sha256",
-    }:
+    }
+    if version == "v9":
+        expected_source_keys.add("predecessor_seed")
+    if not isinstance(source, Mapping) or set(source) != expected_source_keys:
         raise PackVerificationError("manifest source authority keys drifted")
     exact_candidate(source.get("candidate_sha"), "manifest source candidate")
     if source.get("repository") != "NellWatson/AI-Guardians":
@@ -906,6 +926,19 @@ def verify_pack(
         source.get("inventory_contract_sha256"),
         "manifest inventory contract SHA",
     )
+    if version == "v9":
+        expected_seed = {
+            "version": V9_SEED_VERSION,
+            "manifest_sha256": V9_SEED_MANIFEST_SHA256,
+            "contract_sha256": V9_SEED_CONTRACT_SHA256,
+        }
+        seed = source.get("predecessor_seed")
+        if not isinstance(seed, Mapping) or set(seed) != set(expected_seed):
+            raise PackVerificationError("manifest predecessor seed keys drifted")
+        exact_sha(seed.get("manifest_sha256"), "predecessor seed manifest SHA")
+        exact_sha(seed.get("contract_sha256"), "predecessor seed contract SHA")
+        if not exact_json_equal(seed, expected_seed):
+            raise PackVerificationError("manifest predecessor seed authority drifted")
     license_row = manifest.get("license")
     if not isinstance(license_row, Mapping) or set(license_row) != {
         "identifier",

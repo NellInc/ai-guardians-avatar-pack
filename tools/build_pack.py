@@ -27,6 +27,24 @@ INVENTORY_STATUS = "p2_product_freeze"
 DEFAULT_VERSION = "v1"
 VERSION_PATTERN = re.compile(r"v[1-9][0-9]*")
 MAX_FILE_BYTES = 50_000_000
+DIRECT_RGBA_PILLOW_VERSION = "12.0.0"
+V9_SEED_VERSION = "v8"
+V9_SEED_MANIFEST_SHA256 = (
+    "ecfefbc6ba90d8731bf31c3661bed612a363b7d281957b6abbb2516161689e12"
+)
+V9_SEED_CONTRACT_SHA256 = (
+    "d99fbc67c9320ab98314aede1367742ffe9e7aefcf7f9376dab3845d121a0524"
+)
+V9_SEED_SOURCE = {
+    "candidate_sha": "a9b205e40c0c98845cf098d5361955b3df37cb94",
+    "inventory_contract_sha256": (
+        "960ab7cb667d30bb7472168661d2fdaebab6c91ce530ac088b4173eba79b5941"
+    ),
+    "inventory_sha256": (
+        "9565e7dd572885744449568a63e5839328e3e5fe95898f80fae03cbfaba5a017"
+    ),
+    "repository": "NellWatson/AI-Guardians",
+}
 MANIFEST_ROW_KEYS = frozenset(
     {"family", "media_role", "path", "runtime_path", "sha256", "size"}
 )
@@ -88,6 +106,14 @@ ROLE_PATH_PATTERNS = {
         r"images/chars/_derived/cast_living_successors_v1/"
         r"expression_expansion_v2/(?P<successor_rig>[a-z0-9_]+)/"
         r"(?P=successor_rig)_[a-z0-9_]+_alive_v1\.webm",
+        (
+            r"images/chars/_derived/cast_living_successors_v1/audience/v2/audience/"
+            r"audience_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/zach/v2/zach/"
+            r"zach_[a-z0-9_]+_alive_v1\.webm"
+        ),
         r"images/chars/_derived/whiskr_speech_v1/living/"
         r"whiskr_[a-z0-9_]+_alive_v1\.webm",
         r"images/chars/_derived/yuki_video_avatar_pilot_v1/"
@@ -167,6 +193,8 @@ ROLE_PATH_PATTERNS = {
 ALLOWED_TREES = (
     "images/chars/_derived/cast_living_v1",
     "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
+    "images/chars/_derived/cast_living_successors_v1/audience/v2/audience",
+    "images/chars/_derived/cast_living_successors_v1/zach/v2/zach",
     "images/chars/_derived/cast_speech_v1",
     "images/chars/_derived/cast_speech_successors_v1",
     "images/chars/_derived/whiskr_speech_v1",
@@ -377,6 +405,114 @@ def ensure_regular_source(source_root: Path, runtime_path: str) -> Path:
     return resolved
 
 
+def derive_direct_rgba_peer(
+    source_root: Path, runtime_path: str, derived_root: Path
+) -> Path:
+    """Reproduce an inventory-bound direct RGBA PNG from its source WebP."""
+    if not runtime_path.endswith(".rgba.png"):
+        raise PackBuildError(f"payload is not a direct RGBA peer: {runtime_path}")
+    webp_runtime_path = runtime_path.removesuffix(".rgba.png") + ".webp"
+    webp_source = ensure_regular_source(source_root, webp_runtime_path)
+    try:
+        import PIL
+        from PIL import Image
+    except ImportError as exc:
+        raise PackBuildError(
+            "missing Pillow required to reproduce direct RGBA peers"
+        ) from exc
+    if PIL.__version__ != DIRECT_RGBA_PILLOW_VERSION:
+        raise PackBuildError(
+            "direct RGBA reproduction requires Pillow "
+            f"{DIRECT_RGBA_PILLOW_VERSION}, found {PIL.__version__}"
+        )
+    destination = derived_root.joinpath(*PurePosixPath(runtime_path).parts)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with Image.open(webp_source) as image:
+            with image.convert("RGBA") as rgba:
+                rgba.save(destination, format="PNG", optimize=True)
+    except Exception as exc:
+        raise PackBuildError(
+            f"failed to reproduce direct RGBA peer for {runtime_path}: {exc}"
+        ) from exc
+    return destination
+
+
+def load_v9_seed_manifest(
+    seed_manifest_path: Path, seed_root: Path
+) -> tuple[dict[str, dict[str, object]], dict[str, str]]:
+    """Load and verify the exact published v8 payload authority for v9 reuse."""
+    raw = seed_manifest_path.read_bytes()
+    observed_manifest_sha = sha256_bytes(raw)
+    if observed_manifest_sha != V9_SEED_MANIFEST_SHA256:
+        raise PackBuildError(
+            "v9 seed manifest is not the verified live v8 authority: "
+            f"{observed_manifest_sha}"
+        )
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PackBuildError("v9 seed manifest is not valid UTF-8 JSON") from exc
+    if not isinstance(payload, Mapping):
+        raise PackBuildError("v9 seed manifest root is not an object")
+    if (
+        type(payload.get("schema")) is not int
+        or payload.get("schema") != SCHEMA
+        or payload.get("status") != STATUS
+        or payload.get("version") != V9_SEED_VERSION
+        or payload.get("contract_sha256") != V9_SEED_CONTRACT_SHA256
+        or payload.get("source") != V9_SEED_SOURCE
+    ):
+        raise PackBuildError("v9 seed manifest authority drifted")
+    raw_rows = payload.get("files")
+    if not isinstance(raw_rows, Sequence) or isinstance(raw_rows, (str, bytes)):
+        raise PackBuildError("v9 seed manifest files is not a flat list")
+
+    rows: dict[str, dict[str, object]] = {}
+    public_paths: list[str] = []
+    for raw_row in raw_rows:
+        if not isinstance(raw_row, Mapping) or set(raw_row) != MANIFEST_ROW_KEYS:
+            raise PackBuildError(f"v9 seed manifest row keys drifted: {raw_row!r}")
+        runtime_path = normalize_runtime_path(raw_row["runtime_path"])
+        public_path = raw_row["path"]
+        if public_path != f"{V9_SEED_VERSION}/{runtime_path}":
+            raise PackBuildError(
+                f"v9 seed public/runtime path drifted for {runtime_path}"
+            )
+        if runtime_path in rows:
+            raise PackBuildError(f"duplicate v9 seed runtime path: {runtime_path}")
+        family, role = validate_media_contract(
+            runtime_path, raw_row["family"], raw_row["media_role"]
+        )
+        size = parse_positive_int(raw_row["size"], f"v9 seed size for {runtime_path}")
+        digest = require_sha256(raw_row["sha256"], f"v9 seed SHA for {runtime_path}")
+        source = ensure_regular_source(seed_root, runtime_path)
+        observed_size = source.stat().st_size
+        observed_sha = sha256_file(source)
+        if observed_size != size or observed_sha != digest:
+            raise PackBuildError(
+                f"verified v8 seed bytes drifted for {runtime_path}: "
+                f"size {observed_size}/{size}, SHA {observed_sha}/{digest}"
+            )
+        verify_file_magic(source, PurePosixPath(runtime_path).suffix.lower())
+        rows[runtime_path] = {
+            "runtime_path": runtime_path,
+            "size": size,
+            "sha256": digest,
+            "family": family,
+            "media_role": role,
+            "_source": source,
+        }
+        public_paths.append(str(public_path))
+    if public_paths != sorted(public_paths, key=lambda path: path.encode("utf-8")):
+        raise PackBuildError("v9 seed manifest rows are not in bytewise path order")
+    return rows, {
+        "version": V9_SEED_VERSION,
+        "manifest_sha256": V9_SEED_MANIFEST_SHA256,
+        "contract_sha256": V9_SEED_CONTRACT_SHA256,
+    }
+
+
 def inventory_contract_sha(rows: Sequence[Mapping[str, object]]) -> str:
     digest = hashlib.sha256()
     for row in rows:
@@ -390,8 +526,12 @@ def inventory_contract_sha(rows: Sequence[Mapping[str, object]]) -> str:
 
 
 def load_inventory(
-    inventory_path: Path, source_root: Path, candidate_sha: str | None
-) -> tuple[list[dict[str, object]], dict[str, str]]:
+    inventory_path: Path,
+    source_root: Path,
+    candidate_sha: str | None,
+    seed_rows: Mapping[str, Mapping[str, object]] | None = None,
+    derived_root: Path | None = None,
+) -> tuple[list[dict[str, object]], dict[str, object]]:
     raw = inventory_path.read_bytes()
     try:
         payload = json.loads(raw.decode("utf-8"))
@@ -417,6 +557,7 @@ def load_inventory(
         raise PackBuildError("closure inventory files is not a flat list")
 
     rows: list[dict[str, object]] = []
+    seeded_files = 0
     seen: set[str] = set()
     casefold_seen: dict[str, str] = {}
     for raw_row in raw_rows:
@@ -438,7 +579,38 @@ def load_inventory(
         )
         size = parse_positive_int(raw_row["size"], f"size for {runtime_path}")
         digest = require_sha256(raw_row["sha256"], f"SHA for {runtime_path}")
-        source = ensure_regular_source(source_root, runtime_path)
+        seed = seed_rows.get(runtime_path) if seed_rows is not None else None
+        if seed is not None and all(
+            seed.get(key) == value
+            for key, value in {
+                "runtime_path": runtime_path,
+                "size": size,
+                "sha256": digest,
+                "family": family,
+                "media_role": role,
+            }.items()
+        ):
+            source = Path(str(seed["_source"]))
+            seeded_files += 1
+        else:
+            try:
+                source = ensure_regular_source(source_root, runtime_path)
+            except PackBuildError as exc:
+                if (
+                    role
+                    not in {
+                        "blink_rgba_layer",
+                        "mouth_rgba_layer",
+                        "semantic_rgba_layer",
+                    }
+                    or derived_root is None
+                ):
+                    raise
+                if not isinstance(exc.__cause__, FileNotFoundError):
+                    raise
+                source = derive_direct_rgba_peer(
+                    source_root, runtime_path, derived_root
+                )
         observed_size = source.stat().st_size
         observed_sha = sha256_file(source)
         if observed_size != size or observed_sha != digest:
@@ -471,6 +643,8 @@ def load_inventory(
         "candidate_sha": inventory_candidate,
         "inventory_sha256": sha256_bytes(raw),
         "inventory_contract_sha256": inventory_contract_sha(public_rows),
+        "seeded_files": seeded_files,
+        "overlay_files": len(ordered) - seeded_files,
     }
 
 
@@ -478,7 +652,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8"}:
+    if version in {"v5", "v7", "v8", "v9"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -646,7 +820,7 @@ def add_aggregate(aggregates: dict[str, dict[str, int]], key: str, size: int) ->
 
 def build_manifest(
     rows: Sequence[Mapping[str, object]],
-    metadata: Mapping[str, str],
+    metadata: Mapping[str, object],
     version: str,
 ) -> dict[str, object]:
     files: list[dict[str, object]] = []
@@ -682,16 +856,19 @@ def build_manifest(
         )
     contract_sha = contract_digest.hexdigest()
     byte_count = sum(int(row["size"]) for row in files)
+    source_authority: dict[str, object] = {
+        "candidate_sha": metadata["candidate_sha"],
+        "repository": "NellWatson/AI-Guardians",
+        "inventory_sha256": metadata["inventory_sha256"],
+        "inventory_contract_sha256": metadata["inventory_contract_sha256"],
+    }
+    if version == "v9":
+        source_authority["predecessor_seed"] = metadata["predecessor_seed"]
     return {
         "schema": SCHEMA,
         "version": version,
         "status": STATUS,
-        "source": {
-            "candidate_sha": metadata["candidate_sha"],
-            "repository": "NellWatson/AI-Guardians",
-            "inventory_sha256": metadata["inventory_sha256"],
-            "inventory_contract_sha256": metadata["inventory_contract_sha256"],
-        },
+        "source": source_authority,
         "license": {
             "identifier": "LicenseRef-Proprietary",
             "holder": "Nell Watson",
@@ -896,71 +1073,108 @@ def build_pack(
     version: str = DEFAULT_VERSION,
     candidate_sha: str | None = None,
     check: bool = False,
+    seed_manifest_path: Path | None = None,
+    seed_root: Path | None = None,
 ) -> dict[str, object]:
     if VERSION_PATTERN.fullmatch(version) is None:
         raise PackBuildError(f"invalid immutable pack version: {version!r}")
     source_root = source_root.resolve(strict=True)
     inventory_path = inventory_path.resolve(strict=True)
+    seed_rows: Mapping[str, Mapping[str, object]] | None = None
+    seed_authority: Mapping[str, str] | None = None
+    if version == "v9":
+        if seed_manifest_path is None or seed_root is None:
+            raise PackBuildError(
+                "v9 requires the exact live v8 --seed-manifest and --seed-root"
+            )
+        if seed_manifest_path.is_symlink():
+            raise PackBuildError("v9 seed manifest must not be a symlink")
+        if seed_root.is_symlink():
+            raise PackBuildError("v9 seed root must not be a symlink")
+        resolved_seed_root = seed_root.resolve(strict=True)
+        if not resolved_seed_root.is_dir():
+            raise PackBuildError("v9 seed root is not a directory")
+        seed_rows, seed_authority = load_v9_seed_manifest(
+            seed_manifest_path.resolve(strict=True), resolved_seed_root
+        )
+    elif seed_manifest_path is not None or seed_root is not None:
+        raise PackBuildError("predecessor seeding is reserved for immutable v9")
     pack_root = pack_root.resolve()
     pack_root.mkdir(parents=True, exist_ok=True)
     validate_nojekyll(pack_root, create_missing=False if check else True)
-    rows, metadata = load_inventory(inventory_path, source_root, candidate_sha)
-    if int(version[1:]) >= 3:
-        validate_alpha_mask_closure(rows, version)
-    manifest = build_manifest(rows, metadata, version)
-    stage_root = Path(tempfile.mkdtemp(prefix=".pack-build-", dir=pack_root))
+    derived_root = Path(tempfile.mkdtemp(prefix=".pack-derived-", dir=pack_root))
     try:
-        receipt = write_staged_pack(stage_root, rows, manifest, version)
-        verification = run_independent_verifier(stage_root, inventory_path, version)
-        if check:
-            current = pack_root / version
-            if not current.is_dir():
-                raise PackBuildError(f"current pack version does not exist: {current}")
-            run_independent_verifier(pack_root, inventory_path, version)
-            staged_names, staged_sha = directory_contract(stage_root / version)
-            current_names, current_sha = directory_contract(current)
-            if staged_names != current_names or staged_sha != current_sha:
-                raise PackBuildError(
-                    "current pack is not a deterministic rebuild: "
-                    f"staged={staged_sha} current={current_sha}"
-                )
-            action = "checked"
-        else:
-            backup = install_version(stage_root, pack_root, version)
-            try:
-                run_independent_verifier(
-                    pack_root,
-                    inventory_path,
-                    version,
-                    transactional_backup=backup is not None,
-                )
-            except Exception as verification_error:
-                try:
-                    rollback_version(pack_root, version, backup)
-                except Exception as rollback_error:
+        rows, metadata = load_inventory(
+            inventory_path,
+            source_root,
+            candidate_sha,
+            seed_rows=seed_rows,
+            derived_root=derived_root,
+        )
+        if seed_authority is not None:
+            metadata["predecessor_seed"] = dict(seed_authority)
+        if int(version[1:]) >= 3:
+            validate_alpha_mask_closure(rows, version)
+        manifest = build_manifest(rows, metadata, version)
+        stage_root = Path(tempfile.mkdtemp(prefix=".pack-build-", dir=pack_root))
+        try:
+            receipt = write_staged_pack(stage_root, rows, manifest, version)
+            verification = run_independent_verifier(stage_root, inventory_path, version)
+            if check:
+                current = pack_root / version
+                if not current.is_dir():
                     raise PackBuildError(
-                        "installed pack failed verification and rollback failed: "
-                        f"verification={verification_error}; rollback={rollback_error}"
-                    ) from verification_error
-                raise
-            finalize_version(backup)
-            action = "built"
-        return {
-            "schema": SCHEMA,
-            "status": "passed",
-            "action": action,
-            "version": version,
-            "candidate_sha": metadata["candidate_sha"],
-            "files": manifest["contract"]["files"],  # type: ignore[index]
-            "bytes": manifest["contract"]["bytes"],  # type: ignore[index]
-            "manifest_sha256": receipt["manifest"]["sha256"],  # type: ignore[index]
-            "contract_sha256": manifest["contract_sha256"],
-            "inventory_sha256": metadata["inventory_sha256"],
-            "independent_verifier": verification["status"],
-        }
+                        f"current pack version does not exist: {current}"
+                    )
+                run_independent_verifier(pack_root, inventory_path, version)
+                staged_names, staged_sha = directory_contract(stage_root / version)
+                current_names, current_sha = directory_contract(current)
+                if staged_names != current_names or staged_sha != current_sha:
+                    raise PackBuildError(
+                        "current pack is not a deterministic rebuild: "
+                        f"staged={staged_sha} current={current_sha}"
+                    )
+                action = "checked"
+            else:
+                backup = install_version(stage_root, pack_root, version)
+                try:
+                    run_independent_verifier(
+                        pack_root,
+                        inventory_path,
+                        version,
+                        transactional_backup=backup is not None,
+                    )
+                except Exception as verification_error:
+                    try:
+                        rollback_version(pack_root, version, backup)
+                    except Exception as rollback_error:
+                        raise PackBuildError(
+                            "installed pack failed verification and rollback failed: "
+                            f"verification={verification_error}; "
+                            f"rollback={rollback_error}"
+                        ) from verification_error
+                    raise
+                finalize_version(backup)
+                action = "built"
+            return {
+                "schema": SCHEMA,
+                "status": "passed",
+                "action": action,
+                "version": version,
+                "candidate_sha": metadata["candidate_sha"],
+                "files": manifest["contract"]["files"],  # type: ignore[index]
+                "bytes": manifest["contract"]["bytes"],  # type: ignore[index]
+                "manifest_sha256": receipt["manifest"]["sha256"],  # type: ignore[index]
+                "contract_sha256": manifest["contract_sha256"],
+                "inventory_sha256": metadata["inventory_sha256"],
+                "independent_verifier": verification["status"],
+            }
+        finally:
+            if stage_root.exists():
+                shutil.rmtree(stage_root)
     finally:
-        if stage_root.exists():
-            shutil.rmtree(stage_root)
+        if derived_root.exists():
+            shutil.rmtree(derived_root)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -972,6 +1186,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--version", default=DEFAULT_VERSION)
     parser.add_argument("--candidate-sha")
+    parser.add_argument(
+        "--seed-manifest",
+        type=Path,
+        help="Exact published v8 manifest required when building immutable v9",
+    )
+    parser.add_argument(
+        "--seed-root",
+        type=Path,
+        help="Verified local v8 payload root required when building immutable v9",
+    )
     parser.add_argument(
         "--check",
         action="store_true",
@@ -990,6 +1214,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             version=args.version,
             candidate_sha=args.candidate_sha,
             check=args.check,
+            seed_manifest_path=args.seed_manifest,
+            seed_root=args.seed_root,
         )
     except Exception as exc:
         print(f"avatar pack build FAILED: {exc}", file=sys.stderr)
