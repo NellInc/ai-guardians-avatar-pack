@@ -45,6 +45,10 @@ V9_SEED_SOURCE = {
     ),
     "repository": "NellWatson/AI-Guardians",
 }
+V10_SEED_VERSION = "v9"
+V10_SEED_MANIFEST_SHA256 = "140b73214f99a8a3cfc269d057ade24c2f89b9ff87e8c8aa88e6d5b644151106"
+V10_SEED_CONTRACT_SHA256 = "bc932da4fe5a3b88d03eef895a2e4ddb31939d12e1f2c8952e32ce4c64f37691"
+V10_SEED_SOURCE = {'candidate_sha': 'fb0e21e9e268b3daa6226cff3f018f105308385b', 'inventory_contract_sha256': '79edd8c51f560fb5f20fc22c3abc2fba8693ef5f43f034db979c7c42bd7d8ebf', 'inventory_sha256': '2a981cb060cd2f6ca2c5066acb524f953ac6c908dc6ace118bd83be6d881786c', 'predecessor_seed': {'contract_sha256': 'd99fbc67c9320ab98314aede1367742ffe9e7aefcf7f9376dab3845d121a0524', 'manifest_sha256': 'ecfefbc6ba90d8731bf31c3661bed612a363b7d281957b6abbb2516161689e12', 'version': 'v8'}, 'repository': 'NellWatson/AI-Guardians'}
 MANIFEST_ROW_KEYS = frozenset(
     {"family", "media_role", "path", "runtime_path", "sha256", "size"}
 )
@@ -57,6 +61,12 @@ CONTENT_TYPES = {
     ".webp": "image/webp",
 }
 ROLE_EXTENSIONS = {
+    "drawn_head": {".webp"},
+    "drawn_mouth": {".webp"},
+    "drawn_blink": {".webp"},
+    "drawn_head_rgba": {".png"},
+    "drawn_mouth_rgba": {".png"},
+    "drawn_blink_rgba": {".png"},
     "blink_alpha_mask": {".png", ".webp"},
     "blink_overlay": {".webp"},
     "blink_rgba_layer": {".png"},
@@ -74,6 +84,26 @@ ROLE_EXTENSIONS = {
     "thinking_contact_foreground": {".webm"},
 }
 ROLE_PATH_PATTERNS = {
+    'drawn_head': (
+        'images/chars/_derived/drawn_portraits_v1/[a-z0-9_]+/(?:left|right|up|down|accepted)/head\\.webp',
+    ),
+    'drawn_head_rgba': (
+        'images/chars/_derived/drawn_portraits_v1/[a-z0-9_]+/(?:left|right|up|down|accepted)/head\\.rgba\\.png',
+    ),
+    'drawn_mouth': (
+        'images/chars/_derived/drawn_portraits_v1/[a-z0-9_]+/(?:left|right|up|down|accepted)/mouth_[A-HX](?:_(?:soft|shallow))?\\.webp',
+        'images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/v[1-9][0-9]*/drawn/mouth_[A-HX](?:_(?:soft|shallow))?\\.webp',
+    ),
+    'drawn_mouth_rgba': (
+        'images/chars/_derived/drawn_portraits_v1/[a-z0-9_]+/(?:left|right|up|down|accepted)/mouth_[A-HX](?:_(?:soft|shallow))?\\.rgba\\.png',
+        'images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/v[1-9][0-9]*/drawn/mouth_[A-HX](?:_(?:soft|shallow))?\\.rgba\\.png',
+    ),
+    'drawn_blink': (
+        'images/chars/_derived/drawn_portraits_v1/[a-z0-9_]+/(?:left|right|up|down|accepted)/blink_(?:0\\.(?:18|45|62)|1\\.00)\\.webp',
+    ),
+    'drawn_blink_rgba': (
+        'images/chars/_derived/drawn_portraits_v1/[a-z0-9_]+/(?:left|right|up|down|accepted)/blink_(?:0\\.(?:18|45|62)|1\\.00)\\.rgba\\.png',
+    ),
     "blink_alpha_mask": (
         r"images/chars/_derived/cast_speech_v1/almiro/"
         r"blink/weight_[0-9]{3}\.alpha\.webp",
@@ -85,6 +115,7 @@ ROLE_PATH_PATTERNS = {
         r"blink/[a-z0-9_]+/weight_[0-9]{3}\.alpha\.png",
     ),
     "blink_overlay": (
+        'images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/v[1-9][0-9]*/blink/weight_[0-9]{3}\\.webp',
         r"images/chars/_derived/cast_speech_v1/almiro/"
         r"blink/weight_[0-9]{3}\.webp",
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
@@ -93,6 +124,7 @@ ROLE_PATH_PATTERNS = {
         r"v[1-9][0-9]*/blink/[a-z0-9_]+/weight_[0-9]{3}\.webp",
     ),
     "blink_rgba_layer": (
+        'images/chars/_derived/cast_speech_successors_v1/[a-z0-9_]+/v[1-9][0-9]*/blink/weight_[0-9]{3}\\.rgba\\.png',
         r"images/chars/_derived/cast_speech_v1/almiro/"
         r"blink/weight_[0-9]{3}\.rgba\.png",
         r"images/chars/_derived/cast_speech_v1/[a-z0-9_]+/"
@@ -191,6 +223,7 @@ ROLE_PATH_PATTERNS = {
     ),
 }
 ALLOWED_TREES = (
+    "images/chars/_derived/drawn_portraits_v1",
     "images/chars/_derived/cast_living_v1",
     "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
     "images/chars/_derived/cast_living_successors_v1/audience/v2/audience",
@@ -438,60 +471,70 @@ def derive_direct_rgba_peer(
     return destination
 
 
-def load_v9_seed_manifest(
-    seed_manifest_path: Path, seed_root: Path
+def load_seed_manifest(
+    seed_manifest_path: Path, seed_root: Path, version: str
 ) -> tuple[dict[str, dict[str, object]], dict[str, str]]:
-    """Load and verify the exact published v8 payload authority for v9 reuse."""
+    """Load the exact predecessor bytes bound to this successor version."""
+    if version == "v9":
+        seed_version, manifest_sha, contract_sha, source_authority = (
+            V9_SEED_VERSION, V9_SEED_MANIFEST_SHA256, V9_SEED_CONTRACT_SHA256, V9_SEED_SOURCE
+        )
+    elif version == "v10":
+        seed_version, manifest_sha, contract_sha, source_authority = (
+            V10_SEED_VERSION, V10_SEED_MANIFEST_SHA256, V10_SEED_CONTRACT_SHA256, V10_SEED_SOURCE
+        )
+    else:
+        raise PackBuildError("predecessor seeding requires v9 or v10")
     raw = seed_manifest_path.read_bytes()
     observed_manifest_sha = sha256_bytes(raw)
-    if observed_manifest_sha != V9_SEED_MANIFEST_SHA256:
+    if observed_manifest_sha != manifest_sha:
         raise PackBuildError(
-            "v9 seed manifest is not the verified live v8 authority: "
+            f"{version} seed manifest is not the verified live {seed_version} authority: "
             f"{observed_manifest_sha}"
         )
     try:
         payload = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise PackBuildError("v9 seed manifest is not valid UTF-8 JSON") from exc
+        raise PackBuildError("predecessor seed manifest is not valid UTF-8 JSON") from exc
     if not isinstance(payload, Mapping):
-        raise PackBuildError("v9 seed manifest root is not an object")
+        raise PackBuildError("predecessor seed manifest root is not an object")
     if (
         type(payload.get("schema")) is not int
         or payload.get("schema") != SCHEMA
         or payload.get("status") != STATUS
-        or payload.get("version") != V9_SEED_VERSION
-        or payload.get("contract_sha256") != V9_SEED_CONTRACT_SHA256
-        or payload.get("source") != V9_SEED_SOURCE
+        or payload.get("version") != seed_version
+        or payload.get("contract_sha256") != contract_sha
+        or payload.get("source") != source_authority
     ):
-        raise PackBuildError("v9 seed manifest authority drifted")
+        raise PackBuildError("predecessor seed manifest authority drifted")
     raw_rows = payload.get("files")
     if not isinstance(raw_rows, Sequence) or isinstance(raw_rows, (str, bytes)):
-        raise PackBuildError("v9 seed manifest files is not a flat list")
+        raise PackBuildError("predecessor seed manifest files is not a flat list")
 
     rows: dict[str, dict[str, object]] = {}
     public_paths: list[str] = []
     for raw_row in raw_rows:
         if not isinstance(raw_row, Mapping) or set(raw_row) != MANIFEST_ROW_KEYS:
-            raise PackBuildError(f"v9 seed manifest row keys drifted: {raw_row!r}")
+            raise PackBuildError(f"predecessor seed manifest row keys drifted: {raw_row!r}")
         runtime_path = normalize_runtime_path(raw_row["runtime_path"])
         public_path = raw_row["path"]
-        if public_path != f"{V9_SEED_VERSION}/{runtime_path}":
+        if public_path != f"{seed_version}/{runtime_path}":
             raise PackBuildError(
-                f"v9 seed public/runtime path drifted for {runtime_path}"
+                f"predecessor seed public/runtime path drifted for {runtime_path}"
             )
         if runtime_path in rows:
-            raise PackBuildError(f"duplicate v9 seed runtime path: {runtime_path}")
+            raise PackBuildError(f"duplicate predecessor seed runtime path: {runtime_path}")
         family, role = validate_media_contract(
             runtime_path, raw_row["family"], raw_row["media_role"]
         )
-        size = parse_positive_int(raw_row["size"], f"v9 seed size for {runtime_path}")
-        digest = require_sha256(raw_row["sha256"], f"v9 seed SHA for {runtime_path}")
+        size = parse_positive_int(raw_row["size"], f"predecessor seed size for {runtime_path}")
+        digest = require_sha256(raw_row["sha256"], f"predecessor seed SHA for {runtime_path}")
         source = ensure_regular_source(seed_root, runtime_path)
         observed_size = source.stat().st_size
         observed_sha = sha256_file(source)
         if observed_size != size or observed_sha != digest:
             raise PackBuildError(
-                f"verified v8 seed bytes drifted for {runtime_path}: "
+                f"verified predecessor seed bytes drifted for {runtime_path}: "
                 f"size {observed_size}/{size}, SHA {observed_sha}/{digest}"
             )
         verify_file_magic(source, PurePosixPath(runtime_path).suffix.lower())
@@ -505,12 +548,17 @@ def load_v9_seed_manifest(
         }
         public_paths.append(str(public_path))
     if public_paths != sorted(public_paths, key=lambda path: path.encode("utf-8")):
-        raise PackBuildError("v9 seed manifest rows are not in bytewise path order")
+        raise PackBuildError("predecessor seed manifest rows are not in bytewise path order")
     return rows, {
-        "version": V9_SEED_VERSION,
-        "manifest_sha256": V9_SEED_MANIFEST_SHA256,
-        "contract_sha256": V9_SEED_CONTRACT_SHA256,
+        "version": seed_version,
+        "manifest_sha256": manifest_sha,
+        "contract_sha256": contract_sha,
     }
+
+
+def load_v9_seed_manifest(seed_manifest_path: Path, seed_root: Path):
+    """Compatibility entry point for the immutable v9 tool contract."""
+    return load_seed_manifest(seed_manifest_path, seed_root, "v9")
 
 
 def inventory_contract_sha(rows: Sequence[Mapping[str, object]]) -> str:
@@ -602,6 +650,9 @@ def load_inventory(
                         "blink_rgba_layer",
                         "mouth_rgba_layer",
                         "semantic_rgba_layer",
+                        "drawn_head_rgba",
+                        "drawn_mouth_rgba",
+                        "drawn_blink_rgba",
                     }
                     or derived_root is None
                 ):
@@ -652,7 +703,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8", "v9"}:
+    if version in {"v5", "v7", "v8", "v9", "v10"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -666,6 +717,13 @@ def validate_alpha_mask_closure(
             "semantic_pulse": "semantic_alpha_mask",
         }
         mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
+    if version == "v10":
+        # Working if each drawn texture has a same-path, lossless RGBA peer.
+        alpha_pairs.update({
+            "drawn_head": "drawn_head_rgba",
+            "drawn_mouth": "drawn_mouth_rgba",
+            "drawn_blink": "drawn_blink_rgba",
+        })
     expected_masks: set[str] = set()
     for row in rows:
         role = str(row["media_role"])
@@ -862,7 +920,7 @@ def build_manifest(
         "inventory_sha256": metadata["inventory_sha256"],
         "inventory_contract_sha256": metadata["inventory_contract_sha256"],
     }
-    if version == "v9":
+    if version in {"v9", "v10"}:
         source_authority["predecessor_seed"] = metadata["predecessor_seed"]
     return {
         "schema": SCHEMA,
@@ -1082,10 +1140,10 @@ def build_pack(
     inventory_path = inventory_path.resolve(strict=True)
     seed_rows: Mapping[str, Mapping[str, object]] | None = None
     seed_authority: Mapping[str, str] | None = None
-    if version == "v9":
+    if version in {"v9", "v10"}:
         if seed_manifest_path is None or seed_root is None:
             raise PackBuildError(
-                "v9 requires the exact live v8 --seed-manifest and --seed-root"
+                f"{version} requires the exact live {'v8' if version == 'v9' else 'v9'} --seed-manifest and --seed-root"
             )
         if seed_manifest_path.is_symlink():
             raise PackBuildError("v9 seed manifest must not be a symlink")
@@ -1094,11 +1152,11 @@ def build_pack(
         resolved_seed_root = seed_root.resolve(strict=True)
         if not resolved_seed_root.is_dir():
             raise PackBuildError("v9 seed root is not a directory")
-        seed_rows, seed_authority = load_v9_seed_manifest(
-            seed_manifest_path.resolve(strict=True), resolved_seed_root
+        seed_rows, seed_authority = load_seed_manifest(
+            seed_manifest_path.resolve(strict=True), resolved_seed_root, version
         )
     elif seed_manifest_path is not None or seed_root is not None:
-        raise PackBuildError("predecessor seeding is reserved for immutable v9")
+        raise PackBuildError("predecessor seeding is reserved for immutable v9 and v10")
     pack_root = pack_root.resolve()
     pack_root.mkdir(parents=True, exist_ok=True)
     validate_nojekyll(pack_root, create_missing=False if check else True)
@@ -1189,12 +1247,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--seed-manifest",
         type=Path,
-        help="Exact published v8 manifest required when building immutable v9",
+        help="Pinned predecessor manifest required for immutable v9 or v10",
     )
     parser.add_argument(
         "--seed-root",
         type=Path,
-        help="Verified local v8 payload root required when building immutable v9",
+        help="Verified predecessor payload root required for immutable v9 or v10",
     )
     parser.add_argument(
         "--check",

@@ -836,3 +836,60 @@ def test_verifier_is_an_independent_implementation() -> None:
     assert "from build_pack" not in source
     assert "EXPECTED_TRANSITION_STEMS" in source
     assert "ally_thinking_to_sad" in source
+
+
+def test_v10_requires_exact_v9_seed(tmp_path: Path) -> None:
+    source_root, inventory, _ = fixture_closure(tmp_path)
+    assert builder.V10_SEED_VERSION == verifier.V10_SEED_VERSION == "v9"
+    assert builder.V10_SEED_MANIFEST_SHA256 == verifier.V10_SEED_MANIFEST_SHA256
+    assert builder.V10_SEED_CONTRACT_SHA256 == verifier.V10_SEED_CONTRACT_SHA256
+    with pytest.raises(builder.PackBuildError, match="exact live v9"):
+        builder.build_pack(source_root, inventory, tmp_path / "pack", version="v10")
+    bad_manifest = tmp_path / "wrong-manifest.json"
+    bad_manifest.write_text("{}\n")
+    with pytest.raises(builder.PackBuildError, match="verified live v9 authority"):
+        builder.load_seed_manifest(bad_manifest, source_root, "v10")
+
+
+@pytest.mark.parametrize("runtime_path,role", [
+    ("images/chars/_derived/drawn_portraits_v1/almiro/left/head.webp", "drawn_head"),
+    ("images/chars/_derived/drawn_portraits_v1/almiro/up/mouth_D_shallow.webp", "drawn_mouth"),
+    ("images/chars/_derived/drawn_portraits_v1/mcintire/accepted/blink_1.00.webp", "drawn_blink"),
+    ("images/chars/_derived/cast_speech_successors_v1/mcintire/v5/drawn/mouth_D.webp", "drawn_mouth"),
+])
+def test_v10_drawn_rgba_closure(tmp_path: Path, runtime_path: str, role: str) -> None:
+    source, inventory, rows = fixture_closure(tmp_path)
+    convert_fixture_masks_to_rgba(source, inventory, rows)
+    add_row(source, rows, runtime_path, "drawn_portraits", role)
+    rgba = runtime_path.removesuffix(".webp") + ".rgba.png"
+    add_row(source, rows, rgba, "drawn_portraits", role + "_rgba")
+    write_inventory(inventory, rows)
+    loaded, _ = builder.load_inventory(inventory, source, None)
+    builder.validate_alpha_mask_closure(loaded, "v10")
+    verifier.validate_alpha_mask_closure(loaded, "v10")
+    assert verifier.role_path_matches(runtime_path, role)
+    assert verifier.role_path_matches(rgba, role + "_rgba")
+    missing_peer = [r for r in loaded if r['runtime_path'] != rgba]
+    with pytest.raises(builder.PackBuildError, match="lacks its exact"):
+        builder.validate_alpha_mask_closure(missing_peer, "v10")
+    with pytest.raises(verifier.PackVerificationError, match="lacks its exact"):
+        verifier.validate_alpha_mask_closure(missing_peer, "v10")
+
+
+@pytest.mark.parametrize("path,role", [
+    ("images/chars/_derived/drawn_portraits_v1/almiro/review/head.webp", "drawn_head"),
+    ("images/chars/_derived/drawn_portraits_v1/almiro/left/contact_sheet.webp", "drawn_head"),
+    ("images/chars/_derived/drawn_portraits_v1/almiro/left/blink_0.99.webp", "drawn_blink"),
+    ("images/chars/_derived/drawn_portraits_v1/almiro/left/head.webp", "drawn_mouth"),
+])
+def test_v10_rejects_drawn_review_and_wrong_role(path: str, role: str) -> None:
+    with pytest.raises(builder.PackBuildError):
+        builder.validate_media_contract(path, "drawn_portraits", role)
+    assert not verifier.role_path_matches(path, role)
+
+
+def test_v10_accepts_manifest_bound_shared_successor_blink() -> None:
+    path = "images/chars/_derived/cast_speech_successors_v1/almiro/v2/blink/weight_100.webp"
+    builder.validate_media_contract(path, "cast_speech", "blink_overlay")
+    assert verifier.role_path_matches(path, "blink_overlay")
+    assert verifier.role_path_matches(path.removesuffix('.webp')+'.rgba.png', 'blink_rgba_layer')
