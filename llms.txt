@@ -1,0 +1,20 @@
+# AI Guardians Avatar Pack
+
+> Versioned runtime media for AI Guardians motion portraits and speech-mouth overlays.
+
+This pack hosts production portrait and overlay assets for the game. Published version directories are immutable. These proprietary assets are published solely for AI Guardians runtime delivery; publication grants no reuse, redistribution, modification or relicensing rights.
+
+## Game
+
+- [AI Guardians](https://www.aiguardians.games/): The main game website.
+
+## Pack documentation and inventories
+
+- [Avatar pack documentation](https://github.com/NellInc/ai-guardians-avatar-pack/blob/main/README.md): Version history, asset scope, integrity checks and rights.
+- [Version 10 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v10/manifest.json): Public runtime-media inventory for version 10.
+- [Version 9 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v9/manifest.json): Public runtime-media inventory for version 9.
+- [Version 8 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v8/manifest.json): Public runtime-media inventory for version 8.
+- [Version 7 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v7/manifest.json): Public runtime-media inventory for version 7.
+- [Version 5 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v5/manifest.json): Public runtime-media inventory for version 5.
+- [Version 2 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v2/manifest.json): Public runtime-media inventory for version 2.
+- [Version 1 manifest](https://nellinc.github.io/ai-guardians-avatar-pack/v1/manifest.json): Public runtime-media inventory for version 1.
