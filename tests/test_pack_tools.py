@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+import re
+
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -849,6 +851,37 @@ def test_v10_requires_exact_v9_seed(tmp_path: Path) -> None:
     bad_manifest.write_text("{}\n")
     with pytest.raises(builder.PackBuildError, match="verified live v9 authority"):
         builder.load_seed_manifest(bad_manifest, source_root, "v10")
+
+
+def test_v11_requires_exact_v10_seed(tmp_path: Path) -> None:
+    source_root, inventory, _ = fixture_closure(tmp_path)
+    assert builder.V11_SEED_VERSION == verifier.V11_SEED_VERSION == "v10"
+    assert builder.V11_SEED_MANIFEST_SHA256 == verifier.V11_SEED_MANIFEST_SHA256
+    assert builder.V11_SEED_CONTRACT_SHA256 == verifier.V11_SEED_CONTRACT_SHA256
+    assert builder.V11_SEED_SOURCE["predecessor_seed"]["version"] == "v9"
+    with pytest.raises(builder.PackBuildError, match="exact live v10"):
+        builder.build_pack(source_root, inventory, tmp_path / "pack", version="v11")
+    bad_manifest = tmp_path / "wrong-manifest.json"
+    bad_manifest.write_text("{}\n")
+    with pytest.raises(builder.PackBuildError, match="verified live v10 authority"):
+        builder.load_seed_manifest(bad_manifest, source_root, "v11")
+
+
+@pytest.mark.parametrize("module", ["builder", "verifier"])
+@pytest.mark.parametrize("runtime_path,accepted", [
+    ("images/chars/_derived/cast_living_successors_v1/player_avatar_1/v8/player_avatar_1/"
+     "player_avatar_1_angry_alive_v1.webm", True),
+    ("images/chars/_derived/cast_living_successors_v1/player_avatar_9/v7/player_avatar_9/"
+     "player_avatar_9_sad_alive_v1.webm", True),
+    ("images/chars/_derived/cast_living_successors_v1/player_avatar_1/v7/player_avatar_1/"
+     "player_avatar_1_angry_alive_v1.webm", False),
+    ("images/chars/_derived/cast_living_successors_v1/player_avatar_8/v8/player_avatar_8/"
+     "player_avatar_8_angry_alive_v1.webm", False),
+])
+def test_v11_admits_only_exact_player_living_successor_roots(module: str, runtime_path: str, accepted: bool) -> None:
+    tool = builder if module == "builder" else verifier
+    patterns = tool.ROLE_PATH_PATTERNS["living_portrait"]
+    assert any(re.fullmatch(pattern, runtime_path) for pattern in patterns) is accepted
 
 
 @pytest.mark.parametrize("runtime_path,role", [

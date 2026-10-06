@@ -27,6 +27,9 @@ V9_SEED_CONTRACT_SHA256 = (
 V10_SEED_VERSION = "v9"
 V10_SEED_MANIFEST_SHA256 = "140b73214f99a8a3cfc269d057ade24c2f89b9ff87e8c8aa88e6d5b644151106"
 V10_SEED_CONTRACT_SHA256 = "bc932da4fe5a3b88d03eef895a2e4ddb31939d12e1f2c8952e32ce4c64f37691"
+V11_SEED_VERSION = "v10"
+V11_SEED_MANIFEST_SHA256 = "21a8b85acf817234270ff54854ea0102c768af5417bbc02147ab778a45b88415"
+V11_SEED_CONTRACT_SHA256 = "c0bebc696e29fa6c5230ffdcb7e7ce39b77d895ed765b50b84662c4054205c77"
 TOP_LEVEL_KEYS = frozenset(
     {
         "schema",
@@ -139,6 +142,38 @@ ROLE_PATH_PATTERNS = {
             r"images/chars/_derived/cast_living_successors_v1/zach/v2/zach/"
             r"zach_[a-z0-9_]+_alive_v1\.webm"
         ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_1/v8/player_avatar_1/"
+            r"player_avatar_1_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_2/v8/player_avatar_2/"
+            r"player_avatar_2_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_3/v8/player_avatar_3/"
+            r"player_avatar_3_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_4/v8/player_avatar_4/"
+            r"player_avatar_4_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_5/v9/player_avatar_5/"
+            r"player_avatar_5_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_6/v8/player_avatar_6/"
+            r"player_avatar_6_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_7/v8/player_avatar_7/"
+            r"player_avatar_7_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_9/v7/player_avatar_9/"
+            r"player_avatar_9_[a-z0-9_]+_alive_v1\.webm"
+        ),
         r"images/chars/_derived/whiskr_speech_v1/living/"
         r"whiskr_[a-z0-9_]+_alive_v1\.webm",
         r"images/chars/_derived/yuki_video_avatar_pilot_v1/"
@@ -221,6 +256,14 @@ ALLOWED_TREES = (
     "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
     "images/chars/_derived/cast_living_successors_v1/audience/v2/audience",
     "images/chars/_derived/cast_living_successors_v1/zach/v2/zach",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_1/v8/player_avatar_1",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_2/v8/player_avatar_2",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_3/v8/player_avatar_3",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_4/v8/player_avatar_4",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_5/v9/player_avatar_5",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_6/v8/player_avatar_6",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_7/v8/player_avatar_7",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_9/v7/player_avatar_9",
     "images/chars/_derived/cast_speech_v1",
     "images/chars/_derived/cast_speech_successors_v1",
     "images/chars/_derived/whiskr_speech_v1",
@@ -424,7 +467,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8", "v9", "v10"}:
+    if version in {"v5", "v7", "v8", "v9", "v10", "v11"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -438,7 +481,7 @@ def validate_alpha_mask_closure(
             "semantic_pulse": "semantic_alpha_mask",
         }
         mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
-    if version == "v10":
+    if version in {"v10", "v11"}:
         # Working if each drawn texture has a same-path, lossless RGBA peer.
         alpha_pairs.update({
             "drawn_head": "drawn_head_rgba",
@@ -953,7 +996,7 @@ def verify_pack(
         "inventory_sha256",
         "inventory_contract_sha256",
     }
-    if version in {"v9", "v10"}:
+    if version in {"v9", "v10", "v11"}:
         expected_source_keys.add("predecessor_seed")
     if not isinstance(source, Mapping) or set(source) != expected_source_keys:
         raise PackVerificationError("manifest source authority keys drifted")
@@ -965,11 +1008,13 @@ def verify_pack(
         source.get("inventory_contract_sha256"),
         "manifest inventory contract SHA",
     )
-    if version in {"v9", "v10"}:
+    if version in {"v9", "v10", "v11"}:
         expected_seed = {
-            "version": V9_SEED_VERSION if version == "v9" else V10_SEED_VERSION,
-            "manifest_sha256": V9_SEED_MANIFEST_SHA256 if version == "v9" else V10_SEED_MANIFEST_SHA256,
-            "contract_sha256": V9_SEED_CONTRACT_SHA256 if version == "v9" else V10_SEED_CONTRACT_SHA256,
+            "version": {"v9": V9_SEED_VERSION, "v10": V10_SEED_VERSION, "v11": V11_SEED_VERSION}[version],
+            "manifest_sha256": {"v9": V9_SEED_MANIFEST_SHA256, "v10": V10_SEED_MANIFEST_SHA256,
+                                "v11": V11_SEED_MANIFEST_SHA256}[version],
+            "contract_sha256": {"v9": V9_SEED_CONTRACT_SHA256, "v10": V10_SEED_CONTRACT_SHA256,
+                                "v11": V11_SEED_CONTRACT_SHA256}[version],
         }
         seed = source.get("predecessor_seed")
         if not isinstance(seed, Mapping) or set(seed) != set(expected_seed):

@@ -95,6 +95,23 @@ PNG peers for every production mouth, blink, and semantic WebP layer. It also
 admits the accepted Audience and Zach living successor namespaces under
 `cast_living_successors_v1/`.
 
+## Version v11
+
+* Source candidate: `fa95ca985f1fb4e3fc49e815c608d1021e3257ff`
+* Runtime media: 18,641 files, 1,034,625,878 bytes
+* Source inventory SHA-256: `5164b9cdeb8741583dd1806d8af0f4bfe63f5e117d594ef2545dc25a8ee248d6`
+* Runtime contract SHA-256: `4113f6ab6f5bdf9b2b23fd7395caa2040bbf30ff6443666e28803ed72f66735e`
+* Manifest SHA-256: `b0b7bcc2026a6ff3dfb2e3308843448bb1d031eb091e521f6337628d827ad9ec`
+
+Version v11 must be seeded from the exact published v10 manifest with SHA-256
+`21a8b85acf817234270ff54854ea0102c768af5417bbc02147ab778a45b88415`
+and runtime contract
+`c0bebc696e29fa6c5230ffdcb7e7ce39b77d895ed765b50b84662c4054205c77`.
+It preserves every v10 row byte for byte and adds the 56 accepted player-avatar
+living successor clips used by the 0.99.2 registry (player avatars 1-4, 6 and 7
+at `v8`, 5 at `v9`, 9 at `v7`). The new clips are VP9 Profile 0 `yuv420p`, so
+the WebKit codec successor needs no new transcode.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a

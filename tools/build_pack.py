@@ -49,6 +49,10 @@ V10_SEED_VERSION = "v9"
 V10_SEED_MANIFEST_SHA256 = "140b73214f99a8a3cfc269d057ade24c2f89b9ff87e8c8aa88e6d5b644151106"
 V10_SEED_CONTRACT_SHA256 = "bc932da4fe5a3b88d03eef895a2e4ddb31939d12e1f2c8952e32ce4c64f37691"
 V10_SEED_SOURCE = {'candidate_sha': 'fb0e21e9e268b3daa6226cff3f018f105308385b', 'inventory_contract_sha256': '79edd8c51f560fb5f20fc22c3abc2fba8693ef5f43f034db979c7c42bd7d8ebf', 'inventory_sha256': '2a981cb060cd2f6ca2c5066acb524f953ac6c908dc6ace118bd83be6d881786c', 'predecessor_seed': {'contract_sha256': 'd99fbc67c9320ab98314aede1367742ffe9e7aefcf7f9376dab3845d121a0524', 'manifest_sha256': 'ecfefbc6ba90d8731bf31c3661bed612a363b7d281957b6abbb2516161689e12', 'version': 'v8'}, 'repository': 'NellWatson/AI-Guardians'}
+V11_SEED_VERSION = "v10"
+V11_SEED_MANIFEST_SHA256 = "21a8b85acf817234270ff54854ea0102c768af5417bbc02147ab778a45b88415"
+V11_SEED_CONTRACT_SHA256 = "c0bebc696e29fa6c5230ffdcb7e7ce39b77d895ed765b50b84662c4054205c77"
+V11_SEED_SOURCE = {'candidate_sha': 'd17acbf9489b72257b392d31c1cdd6e74d782a47', 'inventory_contract_sha256': '74fd9315a1f490dc988121a21229ef79a5c184269fd9b841e53b03ae256fedb1', 'inventory_sha256': '332a566b7894505bc31871b7095b478f6c76aa9e66988873f567baa5e75a330e', 'predecessor_seed': {'contract_sha256': 'bc932da4fe5a3b88d03eef895a2e4ddb31939d12e1f2c8952e32ce4c64f37691', 'manifest_sha256': '140b73214f99a8a3cfc269d057ade24c2f89b9ff87e8c8aa88e6d5b644151106', 'version': 'v9'}, 'repository': 'NellWatson/AI-Guardians'}
 MANIFEST_ROW_KEYS = frozenset(
     {"family", "media_role", "path", "runtime_path", "sha256", "size"}
 )
@@ -146,6 +150,38 @@ ROLE_PATH_PATTERNS = {
             r"images/chars/_derived/cast_living_successors_v1/zach/v2/zach/"
             r"zach_[a-z0-9_]+_alive_v1\.webm"
         ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_1/v8/player_avatar_1/"
+            r"player_avatar_1_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_2/v8/player_avatar_2/"
+            r"player_avatar_2_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_3/v8/player_avatar_3/"
+            r"player_avatar_3_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_4/v8/player_avatar_4/"
+            r"player_avatar_4_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_5/v9/player_avatar_5/"
+            r"player_avatar_5_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_6/v8/player_avatar_6/"
+            r"player_avatar_6_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_7/v8/player_avatar_7/"
+            r"player_avatar_7_[a-z0-9_]+_alive_v1\.webm"
+        ),
+        (
+            r"images/chars/_derived/cast_living_successors_v1/player_avatar_9/v7/player_avatar_9/"
+            r"player_avatar_9_[a-z0-9_]+_alive_v1\.webm"
+        ),
         r"images/chars/_derived/whiskr_speech_v1/living/"
         r"whiskr_[a-z0-9_]+_alive_v1\.webm",
         r"images/chars/_derived/yuki_video_avatar_pilot_v1/"
@@ -228,6 +264,14 @@ ALLOWED_TREES = (
     "images/chars/_derived/cast_living_successors_v1/expression_expansion_v2",
     "images/chars/_derived/cast_living_successors_v1/audience/v2/audience",
     "images/chars/_derived/cast_living_successors_v1/zach/v2/zach",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_1/v8/player_avatar_1",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_2/v8/player_avatar_2",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_3/v8/player_avatar_3",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_4/v8/player_avatar_4",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_5/v9/player_avatar_5",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_6/v8/player_avatar_6",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_7/v8/player_avatar_7",
+    "images/chars/_derived/cast_living_successors_v1/player_avatar_9/v7/player_avatar_9",
     "images/chars/_derived/cast_speech_v1",
     "images/chars/_derived/cast_speech_successors_v1",
     "images/chars/_derived/whiskr_speech_v1",
@@ -483,8 +527,12 @@ def load_seed_manifest(
         seed_version, manifest_sha, contract_sha, source_authority = (
             V10_SEED_VERSION, V10_SEED_MANIFEST_SHA256, V10_SEED_CONTRACT_SHA256, V10_SEED_SOURCE
         )
+    elif version == "v11":
+        seed_version, manifest_sha, contract_sha, source_authority = (
+            V11_SEED_VERSION, V11_SEED_MANIFEST_SHA256, V11_SEED_CONTRACT_SHA256, V11_SEED_SOURCE
+        )
     else:
-        raise PackBuildError("predecessor seeding requires v9 or v10")
+        raise PackBuildError("predecessor seeding requires v9, v10 or v11")
     raw = seed_manifest_path.read_bytes()
     observed_manifest_sha = sha256_bytes(raw)
     if observed_manifest_sha != manifest_sha:
@@ -703,7 +751,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8", "v9", "v10"}:
+    if version in {"v5", "v7", "v8", "v9", "v10", "v11"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -717,7 +765,7 @@ def validate_alpha_mask_closure(
             "semantic_pulse": "semantic_alpha_mask",
         }
         mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
-    if version == "v10":
+    if version in {"v10", "v11"}:
         # Working if each drawn texture has a same-path, lossless RGBA peer.
         alpha_pairs.update({
             "drawn_head": "drawn_head_rgba",
@@ -920,7 +968,7 @@ def build_manifest(
         "inventory_sha256": metadata["inventory_sha256"],
         "inventory_contract_sha256": metadata["inventory_contract_sha256"],
     }
-    if version in {"v9", "v10"}:
+    if version in {"v9", "v10", "v11"}:
         source_authority["predecessor_seed"] = metadata["predecessor_seed"]
     return {
         "schema": SCHEMA,
@@ -1140,10 +1188,10 @@ def build_pack(
     inventory_path = inventory_path.resolve(strict=True)
     seed_rows: Mapping[str, Mapping[str, object]] | None = None
     seed_authority: Mapping[str, str] | None = None
-    if version in {"v9", "v10"}:
+    if version in {"v9", "v10", "v11"}:
         if seed_manifest_path is None or seed_root is None:
             raise PackBuildError(
-                f"{version} requires the exact live {'v8' if version == 'v9' else 'v9'} --seed-manifest and --seed-root"
+                f"{version} requires the exact live {'v8' if version == 'v9' else 'v9' if version == 'v10' else 'v10'} --seed-manifest and --seed-root"
             )
         if seed_manifest_path.is_symlink():
             raise PackBuildError("v9 seed manifest must not be a symlink")
@@ -1156,7 +1204,7 @@ def build_pack(
             seed_manifest_path.resolve(strict=True), resolved_seed_root, version
         )
     elif seed_manifest_path is not None or seed_root is not None:
-        raise PackBuildError("predecessor seeding is reserved for immutable v9 and v10")
+        raise PackBuildError("predecessor seeding is reserved for immutable v9, v10 and v11")
     pack_root = pack_root.resolve()
     pack_root.mkdir(parents=True, exist_ok=True)
     validate_nojekyll(pack_root, create_missing=False if check else True)
@@ -1247,12 +1295,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--seed-manifest",
         type=Path,
-        help="Pinned predecessor manifest required for immutable v9 or v10",
+        help="Pinned predecessor manifest required for immutable v9, v10 or v11",
     )
     parser.add_argument(
         "--seed-root",
         type=Path,
-        help="Verified predecessor payload root required for immutable v9 or v10",
+        help="Verified predecessor payload root required for immutable v9, v10 or v11",
     )
     parser.add_argument(
         "--check",
