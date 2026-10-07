@@ -30,6 +30,9 @@ V10_SEED_CONTRACT_SHA256 = "bc932da4fe5a3b88d03eef895a2e4ddb31939d12e1f2c8952e32
 V11_SEED_VERSION = "v10"
 V11_SEED_MANIFEST_SHA256 = "21a8b85acf817234270ff54854ea0102c768af5417bbc02147ab778a45b88415"
 V11_SEED_CONTRACT_SHA256 = "c0bebc696e29fa6c5230ffdcb7e7ce39b77d895ed765b50b84662c4054205c77"
+V12_SEED_VERSION = "v11"
+V12_SEED_MANIFEST_SHA256 = "b0b7bcc2026a6ff3dfb2e3308843448bb1d031eb091e521f6337628d827ad9ec"
+V12_SEED_CONTRACT_SHA256 = "4113f6ab6f5bdf9b2b23fd7395caa2040bbf30ff6443666e28803ed72f66735e"
 TOP_LEVEL_KEYS = frozenset(
     {
         "schema",
@@ -467,7 +470,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8", "v9", "v10", "v11"}:
+    if version in {"v5", "v7", "v8", "v9", "v10", "v11", "v12"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -481,7 +484,7 @@ def validate_alpha_mask_closure(
             "semantic_pulse": "semantic_alpha_mask",
         }
         mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
-    if version in {"v10", "v11"}:
+    if version in {"v10", "v11", "v12"}:
         # Working if each drawn texture has a same-path, lossless RGBA peer.
         alpha_pairs.update({
             "drawn_head": "drawn_head_rgba",
@@ -996,7 +999,7 @@ def verify_pack(
         "inventory_sha256",
         "inventory_contract_sha256",
     }
-    if version in {"v9", "v10", "v11"}:
+    if version in {"v9", "v10", "v11", "v12"}:
         expected_source_keys.add("predecessor_seed")
     if not isinstance(source, Mapping) or set(source) != expected_source_keys:
         raise PackVerificationError("manifest source authority keys drifted")
@@ -1008,13 +1011,14 @@ def verify_pack(
         source.get("inventory_contract_sha256"),
         "manifest inventory contract SHA",
     )
-    if version in {"v9", "v10", "v11"}:
+    if version in {"v9", "v10", "v11", "v12"}:
         expected_seed = {
-            "version": {"v9": V9_SEED_VERSION, "v10": V10_SEED_VERSION, "v11": V11_SEED_VERSION}[version],
+            "version": {"v9": V9_SEED_VERSION, "v10": V10_SEED_VERSION, "v11": V11_SEED_VERSION,
+                        "v12": V12_SEED_VERSION}[version],
             "manifest_sha256": {"v9": V9_SEED_MANIFEST_SHA256, "v10": V10_SEED_MANIFEST_SHA256,
-                                "v11": V11_SEED_MANIFEST_SHA256}[version],
+                                "v11": V11_SEED_MANIFEST_SHA256, "v12": V12_SEED_MANIFEST_SHA256}[version],
             "contract_sha256": {"v9": V9_SEED_CONTRACT_SHA256, "v10": V10_SEED_CONTRACT_SHA256,
-                                "v11": V11_SEED_CONTRACT_SHA256}[version],
+                                "v11": V11_SEED_CONTRACT_SHA256, "v12": V12_SEED_CONTRACT_SHA256}[version],
         }
         seed = source.get("predecessor_seed")
         if not isinstance(seed, Mapping) or set(seed) != set(expected_seed):

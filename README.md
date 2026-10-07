@@ -112,6 +112,24 @@ living successor clips used by the 0.99.2 registry (player avatars 1-4, 6 and 7
 at `v8`, 5 at `v9`, 9 at `v7`). The new clips are VP9 Profile 0 `yuv420p`, so
 the WebKit codec successor needs no new transcode.
 
+## Version v12
+
+* Source candidate: `4b098b92ed5987060263c682f8bd8eb19fbe84bb`
+* Runtime media: 11,745 files, 864,385,628 bytes
+* Source inventory SHA-256: `a444b4eca030d2298744eb3e59a03dccd865523def7051e0635b833f565da536`
+* Runtime contract SHA-256: `f6d5ad377e5fc26121661b7a19e4094c46fd4e2f0329ce53faae508647b67bc9`
+* Manifest SHA-256: `1fda299c8f4103026bdd71886e69688230f01b3d23d6d2a10ddea46111094abd`
+
+Version v12 must be seeded from the exact published v11 manifest with SHA-256
+`b0b7bcc2026a6ff3dfb2e3308843448bb1d031eb091e521f6337628d827ad9ec`
+and runtime contract
+`4113f6ab6f5bdf9b2b23fd7395caa2040bbf30ff6443666e28803ed72f66735e`.
+It is v11 minus 6,896 rows superseded by the 0.99.2 successor promotions:
+2,700 mouth-atlas and 720 blink-overlay WebP files with their 3,420 RGBA PNG
+peers, and the 56 retired `cast_living_v1/player_avatar_*` clips. Every kept
+row is byte-identical to v11. The web build streams exactly this set, so the
+build's remote-file list and the pack are equal.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a
