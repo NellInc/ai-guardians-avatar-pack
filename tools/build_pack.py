@@ -57,7 +57,11 @@ V12_SEED_VERSION = "v11"
 V12_SEED_MANIFEST_SHA256 = "b0b7bcc2026a6ff3dfb2e3308843448bb1d031eb091e521f6337628d827ad9ec"
 V12_SEED_CONTRACT_SHA256 = "4113f6ab6f5bdf9b2b23fd7395caa2040bbf30ff6443666e28803ed72f66735e"
 V12_SEED_SOURCE = {'candidate_sha': 'fa95ca985f1fb4e3fc49e815c608d1021e3257ff', 'inventory_contract_sha256': 'e8dcfb98b19bfd38573056cf892681af58d4379472872d1046ececc4aa8c2e38', 'inventory_sha256': '5164b9cdeb8741583dd1806d8af0f4bfe63f5e117d594ef2545dc25a8ee248d6', 'predecessor_seed': {'contract_sha256': 'c0bebc696e29fa6c5230ffdcb7e7ce39b77d895ed765b50b84662c4054205c77', 'manifest_sha256': '21a8b85acf817234270ff54854ea0102c768af5417bbc02147ab778a45b88415', 'version': 'v10'}, 'repository': 'NellWatson/AI-Guardians'}
-SEED_PREDECESSOR = {"v9": "v8", "v10": "v9", "v11": "v10", "v12": "v11"}
+V13_SEED_VERSION = "v12"
+V13_SEED_MANIFEST_SHA256 = "1fda299c8f4103026bdd71886e69688230f01b3d23d6d2a10ddea46111094abd"
+V13_SEED_CONTRACT_SHA256 = "f6d5ad377e5fc26121661b7a19e4094c46fd4e2f0329ce53faae508647b67bc9"
+V13_SEED_SOURCE = {'candidate_sha': '4b098b92ed5987060263c682f8bd8eb19fbe84bb', 'inventory_contract_sha256': '70b28d2ef730935bc0b6328420ead9e0e9bbd9b76088b8fb46f06200a9c4dfb9', 'inventory_sha256': 'a444b4eca030d2298744eb3e59a03dccd865523def7051e0635b833f565da536', 'predecessor_seed': {'contract_sha256': '4113f6ab6f5bdf9b2b23fd7395caa2040bbf30ff6443666e28803ed72f66735e', 'manifest_sha256': 'b0b7bcc2026a6ff3dfb2e3308843448bb1d031eb091e521f6337628d827ad9ec', 'version': 'v11'}, 'repository': 'NellWatson/AI-Guardians'}
+SEED_PREDECESSOR = {"v9": "v8", "v10": "v9", "v11": "v10", "v12": "v11", "v13": "v12"}
 MANIFEST_ROW_KEYS = frozenset(
     {"family", "media_role", "path", "runtime_path", "sha256", "size"}
 )
@@ -540,8 +544,12 @@ def load_seed_manifest(
         seed_version, manifest_sha, contract_sha, source_authority = (
             V12_SEED_VERSION, V12_SEED_MANIFEST_SHA256, V12_SEED_CONTRACT_SHA256, V12_SEED_SOURCE
         )
+    elif version == "v13":
+        seed_version, manifest_sha, contract_sha, source_authority = (
+            V13_SEED_VERSION, V13_SEED_MANIFEST_SHA256, V13_SEED_CONTRACT_SHA256, V13_SEED_SOURCE
+        )
     else:
-        raise PackBuildError("predecessor seeding requires v9, v10, v11 or v12")
+        raise PackBuildError("predecessor seeding requires v9, v10, v11, v12 or v13")
     raw = seed_manifest_path.read_bytes()
     observed_manifest_sha = sha256_bytes(raw)
     if observed_manifest_sha != manifest_sha:
@@ -760,7 +768,7 @@ def validate_alpha_mask_closure(
     rows: Sequence[Mapping[str, object]], version: str
 ) -> None:
     by_path = {str(row["runtime_path"]): row for row in rows}
-    if version in {"v5", "v7", "v8", "v9", "v10", "v11", "v12"}:
+    if version in {"v5", "v7", "v8", "v9", "v10", "v11", "v12", "v13"}:
         alpha_pairs = {
             "blink_overlay": "blink_rgba_layer",
             "mouth_atlas": "mouth_rgba_layer",
@@ -774,7 +782,7 @@ def validate_alpha_mask_closure(
             "semantic_pulse": "semantic_alpha_mask",
         }
         mask_extension = ".alpha.png" if int(version[1:]) >= 4 else ".alpha.webp"
-    if version in {"v10", "v11", "v12"}:
+    if version in {"v10", "v11", "v12", "v13"}:
         # Working if each drawn texture has a same-path, lossless RGBA peer.
         alpha_pairs.update({
             "drawn_head": "drawn_head_rgba",
@@ -977,7 +985,7 @@ def build_manifest(
         "inventory_sha256": metadata["inventory_sha256"],
         "inventory_contract_sha256": metadata["inventory_contract_sha256"],
     }
-    if version in {"v9", "v10", "v11", "v12"}:
+    if version in {"v9", "v10", "v11", "v12", "v13"}:
         source_authority["predecessor_seed"] = metadata["predecessor_seed"]
     return {
         "schema": SCHEMA,
@@ -1197,7 +1205,7 @@ def build_pack(
     inventory_path = inventory_path.resolve(strict=True)
     seed_rows: Mapping[str, Mapping[str, object]] | None = None
     seed_authority: Mapping[str, str] | None = None
-    if version in {"v9", "v10", "v11", "v12"}:
+    if version in {"v9", "v10", "v11", "v12", "v13"}:
         if seed_manifest_path is None or seed_root is None:
             raise PackBuildError(
                 f"{version} requires the exact live {SEED_PREDECESSOR[version]} --seed-manifest and --seed-root"
@@ -1213,7 +1221,7 @@ def build_pack(
             seed_manifest_path.resolve(strict=True), resolved_seed_root, version
         )
     elif seed_manifest_path is not None or seed_root is not None:
-        raise PackBuildError("predecessor seeding is reserved for immutable v9, v10, v11 and v12")
+        raise PackBuildError("predecessor seeding is reserved for immutable v9, v10, v11, v12 and v13")
     pack_root = pack_root.resolve()
     pack_root.mkdir(parents=True, exist_ok=True)
     validate_nojekyll(pack_root, create_missing=False if check else True)
@@ -1304,12 +1312,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--seed-manifest",
         type=Path,
-        help="Pinned predecessor manifest required for immutable v9, v10, v11 or v12",
+        help="Pinned predecessor manifest required for immutable v9, v10, v11, v12 or v13",
     )
     parser.add_argument(
         "--seed-root",
         type=Path,
-        help="Verified predecessor payload root required for immutable v9, v10, v11 or v12",
+        help="Verified predecessor payload root required for immutable v9, v10, v11, v12 or v13",
     )
     parser.add_argument(
         "--check",

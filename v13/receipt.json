@@ -1,0 +1,20 @@
+{
+  "candidate_sha": "555bfc2d72edbf87167467f37740eeb7b7abc9d0",
+  "contract": {
+    "bytes": 1026644391,
+    "files": 18585,
+    "sha256": "ea0a674eb6717d349bb486413cff49e888a975033067b5a2ed43e62bf7e0bd26"
+  },
+  "inventory": {
+    "contract_sha256": "400794b38e674645a7b7cba3cb5d6a1d70498ea81e159b356d47ab800a522326",
+    "sha256": "06a9ab2999c2d8b06ccd7b6b64d3af57bb2052aa36e14105f19cda30c4902d99"
+  },
+  "manifest": {
+    "bytes": 7406375,
+    "path": "v13/manifest.json",
+    "sha256": "bff28eae2618b5269bbfcbff4e038f075da570db8d9098f30edda36dd8401d8f"
+  },
+  "schema": 1,
+  "status": "sealed_pack_receipt",
+  "version": "v13"
+}

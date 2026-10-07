@@ -130,6 +130,25 @@ peers, and the 56 retired `cast_living_v1/player_avatar_*` clips. Every kept
 row is byte-identical to v11. The web build streams exactly this set, so the
 build's remote-file list and the pack are equal.
 
+## Version v13
+
+* Source candidate: `555bfc2d72edbf87167467f37740eeb7b7abc9d0`
+* Runtime media: 18,585 files, 1,026,644,391 bytes
+* Source inventory SHA-256: `06a9ab2999c2d8b06ccd7b6b64d3af57bb2052aa36e14105f19cda30c4902d99`
+* Runtime contract SHA-256: `ea0a674eb6717d349bb486413cff49e888a975033067b5a2ed43e62bf7e0bd26`
+* Manifest SHA-256: `bff28eae2618b5269bbfcbff4e038f075da570db8d9098f30edda36dd8401d8f`
+
+Version v13 must be seeded from the exact published v12 manifest with SHA-256
+`1fda299c8f4103026bdd71886e69688230f01b3d23d6d2a10ddea46111094abd`
+and runtime contract
+`f6d5ad377e5fc26121661b7a19e4094c46fd4e2f0329ce53faae508647b67bc9`.
+It adds the 3,420 registry-selected speech WebP files (2,700 mouth atlases and
+720 blink overlays) under the 34 `cast_speech_successors_v1` roots that the
+0.99.2 promotions selected, each with its reproduced RGBA PNG peer. v12
+removed the superseded predecessors of those files but did not add their
+successors, so the web build could not stream them; v12 is retained but unused.
+v13's cast rows equal the game's registry-selected payload set exactly.
+
 Paths below `v1/` preserve their game-relative names. A runtime request for `images/chars/...` maps to `v1/images/chars/...`.
 
 Each version becomes immutable when published. A changed byte requires a

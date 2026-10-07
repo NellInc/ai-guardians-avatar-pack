@@ -882,6 +882,21 @@ def test_v12_requires_exact_v11_seed(tmp_path: Path) -> None:
         builder.load_seed_manifest(bad_manifest, source_root, "v12")
 
 
+def test_v13_requires_exact_v12_seed(tmp_path: Path) -> None:
+    source_root, inventory, _ = fixture_closure(tmp_path)
+    assert builder.V13_SEED_VERSION == verifier.V13_SEED_VERSION == "v12"
+    assert builder.V13_SEED_MANIFEST_SHA256 == verifier.V13_SEED_MANIFEST_SHA256
+    assert builder.V13_SEED_CONTRACT_SHA256 == verifier.V13_SEED_CONTRACT_SHA256
+    assert builder.V13_SEED_SOURCE["predecessor_seed"]["version"] == "v11"
+    assert builder.SEED_PREDECESSOR["v13"] == "v12"
+    with pytest.raises(builder.PackBuildError, match="exact live v12"):
+        builder.build_pack(source_root, inventory, tmp_path / "pack", version="v13")
+    bad_manifest = tmp_path / "wrong-manifest.json"
+    bad_manifest.write_text("{}\n")
+    with pytest.raises(builder.PackBuildError, match="verified live v12 authority"):
+        builder.load_seed_manifest(bad_manifest, source_root, "v13")
+
+
 @pytest.mark.parametrize("module", ["builder", "verifier"])
 @pytest.mark.parametrize("runtime_path,accepted", [
     ("images/chars/_derived/cast_living_successors_v1/player_avatar_1/v8/player_avatar_1/"
